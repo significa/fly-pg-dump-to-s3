@@ -9,10 +9,10 @@
 
 ## Create AWS resources
 
+`./create-aws-resources.sh` 
+
 1. Creates and configure bucket for the backups
 2. Creates user with write permissions for the backup bucket
-
-Run: `./create-aws-resources.sh` 
 
 Output:
 
@@ -27,10 +27,10 @@ PRODUCTION_S3_DESTINATON=s3://example-bucket/project-name-db-backup-production.t
 
 ## Create database user and grant permissions
 
+`./grant-db-permissions.sh`
+
 1. Creates backup-worker-user
 2. Grant permissions to the backup-worker-user in all schemas for all tables and sequences
-
-Run: `./grant-db-permissions.sh`
 
 Output:
 
@@ -41,15 +41,15 @@ Output:
 
 ## Create Fly.io resources
 
+`./create-fly-resources.sh`
+
 1. Creates database backup worker app on fly.io
 2. Creates volume for worker app
 
-After, you will to import the secrets to the worker app and deploy it using:
+After, you need will to import the secrets to the worker app and deploy it using:
 
 ```
 fly -a [db-backup-worker-app] secrets import < .env
 fly -a [db-backup-worker-app] deploy --remote-only
 ```
-
-Run: `./create-fly-resources.sh`
 

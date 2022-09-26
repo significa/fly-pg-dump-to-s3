@@ -8,10 +8,10 @@ ENV_FILE=.env
 read -p 'Fly database app: ' database_app
 
 read -p 'Database names: (separated with space) ' database_names_input
-database_names=($database_names_input)
+database_names=(${database_names_input})
 
 database_backup_worker_user="db_backup_worker"
-password=$(openssl rand -base64 "$DB_PASSWORD_SIZE")
+password=$(openssl rand -base64 "${DB_PASSWORD_SIZE}")
 password=$(head /dev/urandom | LC_ALL=C tr -dc A-Za-z0-9 | head -c "$DB_PASSWORD_SIZE")
 
 database_envs=""
@@ -48,8 +48,6 @@ done
 
 database_script+="\q"
 
-echo "${database_script}" | fly pg connect -a "$database_app"
+echo "${database_script}" | fly pg connect -a "${database_app}"
 
-echo -e "$database_envs"
-echo -e "$database_envs" >> "$ENV_FILE"
-
+echo -e "${database_envs}"

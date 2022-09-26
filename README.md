@@ -16,6 +16,8 @@ And what about Fly machines? I haven't tried them.
 
 ## Requirements
 
+Have a look into [create-resources-utils](./create-resources-utils) for scripts to setup all the requirements in a simple way.
+
 1. Fly postgres instance and a user with read permissons.
    Create the `db_backup_worker` user with:
     ```sql

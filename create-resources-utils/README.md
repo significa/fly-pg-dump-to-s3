@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- jq installed
+- jq
 - aws-cli version 2
 - aws logged in
 - fly authenticated

@@ -3,7 +3,6 @@
 set -e
 
 DB_PASSWORD_SIZE=32
-ENV_FILE=.env
 
 read -p 'Fly database app: ' database_app
 

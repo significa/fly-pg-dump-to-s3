@@ -2,6 +2,9 @@
 
 set -e
 
+BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-60}
+
+
 read -p 'Name (ex: puzzle, bion, activeflow...): ' name
 read -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
 
@@ -27,12 +30,12 @@ bucket_lifecycle_configuration="
 {
   \"Rules\": [
       {
-          \"ID\": \"Delete database backups after 30 days\",
+          \"ID\": \"Delete database backups after $BACKUP_RETENTION_DAYS days\",
           \"Filter\": {},
           \"Status\": \"Enabled\",
           \"NoncurrentVersionExpiration\": {
-              \"NoncurrentDays\": 30,
-              \"NewerNoncurrentVersions\": 30
+              \"NoncurrentDays\": $BACKUP_RETENTION_DAYS,
+              \"NewerNoncurrentVersions\": $BACKUP_RETENTION_DAYS
           }
       }
   ]

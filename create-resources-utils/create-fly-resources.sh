@@ -4,10 +4,10 @@ set -e
 
 VOLUME_SIZE_IN_GB="3"
 
-read -p 'Name (ex: puzzle, bion, activeflow...): ' name
+read -p 'Name prefix (PREFIX-db-backup-worker):' name_prefix
 read -p 'Fly organization name: ' fly_organization_name
 
-app_name="${name}-db-backup-worker"
+app_name="${name_prefix}-db-backup-worker"
 
 echo "Creating ${app_name} app on fly"
 fly apps create --name "${app_name}" --org "${fly_organization_name}"

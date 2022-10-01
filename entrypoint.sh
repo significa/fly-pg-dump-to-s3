@@ -39,7 +39,6 @@ if [[ -n $FLY_APP_NAME && -n $FLY_API_TOKEN ]]; then
   volume_id=$(fly volumes list -a "$FLY_APP_NAME" --json | jq -r '.[0] | .id')
 
   echo "Deleting volume $volume_id"
-  set -x
   fly volumes delete "$volume_id" --yes
 
   echo "Done! Sleeping..."

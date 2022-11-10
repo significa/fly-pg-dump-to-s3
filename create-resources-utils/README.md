@@ -21,8 +21,8 @@ AWS_ACCESS_KEY_ID=aws_access_key_id
 AWS_SECRET_ACCESS_KEY=aws_secret_access_key
 
 BACKUP_CONFIGURATION_NAMES=STAGING,PRODUCTION
-STAGING_S3_DESTINATON=s3://example-bucket/project-name-db-backup-staging.tar.gz
-PRODUCTION_S3_DESTINATON=s3://example-bucket/project-name-db-backup-production.tar.gz
+STAGING_S3_DESTINATION=s3://example-bucket/project-name-db-backup-staging.tar.gz
+PRODUCTION_S3_DESTINATION=s3://example-bucket/project-name-db-backup-production.tar.gz
 ```
 
 ## Create database user and grant permissions

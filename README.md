@@ -69,7 +69,7 @@ Have a look into [create-resources-utils](./create-resources-utils) for scripts 
     AWS_ACCESS_KEY_ID=XXXX
     AWS_SECRET_ACCESS_KEY=XXXX
     DATABASE_URL=postgresql://username:password@my-fly-db-instance.internal:5432/my_database
-    S3_DESTINATON=s3://your-s3-bucket/backup.tar.gz
+    S3_DESTINATION=s3://your-s3-bucket/backup.tar.gz
     FLY_API_TOKEN=XXXX
     ```
 
@@ -82,7 +82,7 @@ Have a look into [create-resources-utils](./create-resources-utils) for scripts 
 
 ## What about backup history?
 
-You could add a date to the S3_DESTINATON filename (by changing the docker CMD). But I recommend adding versioning to your S3 and manage retention via policies.
+You could add a date to the S3_DESTINATION filename (by changing the docker CMD). But I recommend adding versioning to your S3 and manage retention via policies.
 
 
 ## Backup multiple databases/backups in one go?
@@ -93,13 +93,13 @@ Just use the env vars like so:
 BACKUP_CONFIGURATION_NAMES=ENV1,STAGING_ENVIRONMENT,test
 
 ENV1_DATABASE_URL=postgresql://username:password@env1/my_database
-ENV1_S3_DESTINATON=s3://sample-bucket/sample.tar.gz
+ENV1_S3_DESTINATION=s3://sample-bucket/sample.tar.gz
 
 STAGING_ENVIRONMENT_DATABASE_URL=postgresql://username:password@sample/staging
-STAGING_ENVIRONMENT_S3_DESTINATON=s3://sample-db-backups/staging_backup.tar.gz
+STAGING_ENVIRONMENT_S3_DESTINATION=s3://sample-db-backups/staging_backup.tar.gz
 
 TEST_DATABASE_URL=postgresql://username:password@sample/test
-TEST_S3_DESTINATON=s3://sample-db-backups/test_backup.tar.gz
+TEST_S3_DESTINATION=s3://sample-db-backups/test_backup.tar.gz
 ```
 
 It will backup all the databases to the desired s3 destination. AWS and fly tokens are reused.
@@ -108,8 +108,8 @@ It will backup all the databases to the desired s3 destination. AWS and fly toke
 ## Env vars documentation
 
 - `DATABASE_URL`: Postgres database URL. Example: `postgresql://username:password@test:5432/my_database`
-- `S3_DESTINATON`: AWS S3 fill file destination Postgres database URl
-- `BACKUP_CONFIGURATION_NAMES`: Optional: Configuration names/prefixes for `DATABASE_URL` and `S3_DESTINATON`
+- `S3_DESTINATION`: AWS S3 fill file destination Postgres database URl
+- `BACKUP_CONFIGURATION_NAMES`: Optional: Configuration names/prefixes for `DATABASE_URL` and `S3_DESTINATION`
 - `FLY_APP_NAME`:  Optional to delete the volume and terminate the worker. Automatically set by Fly.
 - `FLY_API_TOKEN`: Optional to delete the volume and terminate the worker. Fly API token created via `flyctl` or the web UI.
 - `BACKUPS_TEMP_DIR`: Optional: Where the temp files should go. Defaults to: `/tmp/db-backups`

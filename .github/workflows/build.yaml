@@ -5,15 +5,19 @@ on:
     branches:
       - main
     tags:
+  pull_request:
   release:
     types:
       - published
   workflow_dispatch:
-  pull_request:
 
 jobs:
   build:
+    name: Build and publish image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v3
 
@@ -21,14 +25,14 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ secrets.GHCR_USERNAME }}
-          password: ${{ secrets.GHCR_PASSWORD }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
 
       - name: Docker metadata
         id: docker_metadata
@@ -37,7 +41,6 @@ jobs:
           images: ghcr.io/significa/fly-pg-dump-to-s3
           tags: |
             type=sha
-            type=ref,event=tag
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

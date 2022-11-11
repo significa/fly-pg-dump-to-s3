@@ -105,7 +105,12 @@ TEST_S3_DESTINATION=s3://sample-db-backups/test_backup.tar.gz
 It will backup all the databases to the desired s3 destination. AWS and fly tokens are reused.
 
 
-## Env vars documentation
+## Plain backups without compression (raw SQL backups)
+
+Yes you can.
+For example set `PG_DUMP_ARGS=--format=plain` and `S3_DESTINATION=s3://sample-db-backups/my_backup.sql`.
+
+## Environment variables reference
 
 - `DATABASE_URL`: Postgres database URL. Example: `postgresql://username:password@test:5432/my_database`
 - `S3_DESTINATION`: AWS S3 fill file destination Postgres database URl
@@ -113,7 +118,7 @@ It will backup all the databases to the desired s3 destination. AWS and fly toke
 - `FLY_APP_NAME`:  Optional to delete the volume and terminate the worker. Automatically set by Fly.
 - `FLY_API_TOKEN`: Optional to delete the volume and terminate the worker. Fly API token created via `flyctl` or the web UI.
 - `BACKUPS_TEMP_DIR`: Optional: Where the temp files should go. Defaults to: `/tmp/db-backups`
-- `PG_DUMP_ARGS`: Optional: Override the default `pg_dump` args: `--no-owner --clean --no-privileges --no-sync --jobs=4 --format=directory --compress=0`
+- `PG_DUMP_ARGS`: Optional: Override the default `pg_dump` args: `--no-owner --clean --no-privileges --jobs=4 --format=directory --compress=0`. Tar compression will only kick in if the resulting backup is a directory.
 
 
 ## Is this hacky? Does it work in production environments?
@@ -123,4 +128,4 @@ Yes. Yes :sweat_smile:
 
 ## Will this work outside fly?
 
-Yes, if FLY_APP_NAME or FLY_API_TOKEN are not present, fly commands will be ignored.
+Yes, if `FLY_APP_NAME` or `FLY_API_TOKEN` are not present, fly commands will be ignored.

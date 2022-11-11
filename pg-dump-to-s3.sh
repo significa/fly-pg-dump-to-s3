@@ -4,14 +4,18 @@ set -e
 
 _USAGE="
 Usage: ./backup-db <database_url> <s3-destination>
-Example:
+Examples:
   ./backup-db postgresql://username:password@hostname:5432/my_database s3://my-bucket-name/my_backup.tar.gz
+  PG_DUMP_ARGS=\"--format=plain\" ./backup-db postgresql://user:pass@host/db s3://bucket/backup.sql
+
+By default we do not compress with pg_dump as we want concurrrency,
+later we compress with tar manually. Customize this behaviour with PG_DUMP_ARGS env var.
+Tar will only be called in case the pg_dump output is a directory.
 "
 
 BACKUPS_TEMP_DIR=${BACKUPS_TEMP_DIR:-/tmp/db-backups}
 
-# we are not using pg_dump for compression as we want concurrrency, later we compress with tar manually
-default_pg_dump_args="--no-owner --clean --no-privileges --no-sync --jobs=4 --format=directory --compress=0"
+default_pg_dump_args="--no-owner --clean --no-privileges --jobs=4 --format=directory --compress=0"
 PG_DUMP_ARGS=${PG_DUMP_ARGS:-$default_pg_dump_args}
 
 database_url=$1
@@ -27,25 +31,29 @@ if [[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]]; then
   exit 1
 fi
 
-mkdir -p "${BACKUPS_TEMP_DIR}"
+mkdir -p "$BACKUPS_TEMP_DIR"
 
-backup_dir="${BACKUPS_TEMP_DIR}/db_dump"
-backup_filename="${BACKUPS_TEMP_DIR}/db_dump.tar.gz"
+raw_backup_path="${BACKUPS_TEMP_DIR}/db_dump"
+resulting_backup_path="${BACKUPS_TEMP_DIR}/db_dump.tar.gz"
 
-# In the future we could add a configuration to prevent deletion of existing files
-rm -rf "${backup_dir}" "${backup_filename}"
+rm -rf "$raw_backup_path" "$resulting_backup_path"
 
-echo "Dumping database to ${backup_dir}"
+echo "Dumping database to $raw_backup_path"
 pg_dump $PG_DUMP_ARGS \
-    --dbname="${database_url}" \
-    --file="${backup_dir}"
+    --dbname="$database_url" \
+    --file="$raw_backup_path"
 
-echo "Compressing backup to ${backup_filename}"
-tar -czf "${backup_filename}" -C "${backup_dir}" .
+if [[ -d "$raw_backup_path" ]]; then
+  echo "Compressing backup to $resulting_backup_path"
+  tar -czf "$resulting_backup_path" -C "$raw_backup_path" .
+else
+  echo "Skipping compression"
+  resulting_backup_path="$raw_backup_path"
+fi
 
-echo "Uploading backup to ${destination}"
-aws s3 cp --only-show-errors "${backup_filename}" "${destination}"
+echo "Uploading $resulting_backup_path to $destination"
+aws s3 cp --only-show-errors "$resulting_backup_path" "$destination"
 
-rm -rf "${backup_dir}" "${backup_filename}"
+rm -rf "$raw_backup_path" "$resulting_backup_path"
 
 echo "Database backup finished!"

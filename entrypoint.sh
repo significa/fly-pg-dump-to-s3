@@ -10,7 +10,7 @@ backup_database () {
   database_url_var_name="${prefix}DATABASE_URL"
   database_url=${!database_url_var_name}
 
-  s3_destination_var_name="${prefix}S3_DESTINATON"
+  s3_destination_var_name="${prefix}S3_DESTINATION"
   s3_destination=${!s3_destination_var_name}
 
   if [[ -z $database_url || -z $s3_destination ]]; then

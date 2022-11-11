@@ -48,4 +48,4 @@ if [[ -n $FLY_APP_NAME && -n $FLY_API_TOKEN ]]; then
   sleep infinity
 fi
 
-echo "Done!"
+echo "Exiting"

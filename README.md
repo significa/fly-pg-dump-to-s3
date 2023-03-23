@@ -77,8 +77,8 @@ Have a look into [create-resources-utils](./create-resources-utils) for scripts 
    `SIZE_IN_GB` is the size of the temporary disk where the ephemeral files live during the backup, set it accordingly to the size of the db.
    `REGION` is the region of the volume and consequently the region where the worker will run. Choose one close to the db and the AWS bucket region.
    The volume will be deleted when the backup finishes.
-   Add this command to any periodic runner along with the envs `FLY_APP` and `FLY_API_TOKEN` to perform backups periodically. 
-
+   Add this command to any periodic runner along with the envs `FLY_APP` and `FLY_API_TOKEN` to perform backups periodically.
+   For example, with the reusable GitHub Actions Workflow in `.github/workflows/trigger-backup-worker.yaml`.
 
 ## What about backup history?
 

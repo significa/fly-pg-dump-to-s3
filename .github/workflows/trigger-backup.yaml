@@ -1,0 +1,48 @@
+name: Backup fly DBs
+
+on:
+  workflow_call:
+    inputs:
+      fly-app:
+        description: 'The Fly app name of your db backup worker.'
+        required: true
+        type: string
+      volume-size:
+        description: 'The volume size in GB for the volume of the backup worker.'
+        required: false
+        default: 5
+        type: number
+      region:
+        description: 'The region to run the backup worker from.'
+        required: false
+        default: 'cdg'
+        type: string
+      volume-name:
+        description: 'The db backup worker volume name.'
+        required: false
+        default: 'temp_data'
+        type: string
+
+    secrets:
+      FLY_API_TOKEN:
+        required: true
+
+jobs:
+  backup_db:
+    name: Trigger backup worker
+    runs-on: ubuntu-latest
+    concurrency: fly-db-backup
+    timeout-minutes: 10
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create worker volume
+        run: |
+          flyctl \
+            volumes create ${{ inputs.volume-name }} \
+            --no-encryption \
+            --size ${{ inputs.volume-size }} \
+            --region ${{ inputs.region }} \
+            --app ${{ inputs.fly-app }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

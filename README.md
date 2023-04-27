@@ -22,12 +22,13 @@ Have a look into [create-resources-utils](./create-resources-utils) for scripts 
     ```sql
     CREATE USER db_backup_worker WITH PASSWORD '<password>';
     GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
-    -- For all schemas (example for public):
+    -- For each schema (ex: public):
     GRANT USAGE ON SCHEMA public TO db_backup_worker;
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
     GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO db_backup_worker;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO db_backup_worker;
+    ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public GRANT SELECT ON TABLES TO db_backup_worker;
+    ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public GRANT SELECT ON SEQUENCES TO db_backup_worker;
+    -- Optionally, for PG >= 14 you can use the `pg_read_all_data` role
     ```
 
 2. AWS S3 bucket and an access token with write permissions to it.

@@ -10,32 +10,22 @@ on:
       volume-size:
         description: 'The volume size in GB for the volume of the backup worker.'
         required: false
-        default: 5
         type: number
       machine-size:
         description: 'Fly machines v2 size (https://fly.io/docs/about/pricing/#machines)'
         required: false
-        default: shared-cpu-4x
         type: string
       region:
         description: 'The region to run the backup worker from.'
         required: false
-        default: cdg
-        type: string
-      volume-name:
-        description: 'The db backup worker volume name.'
-        required: false
-        default: 'emp_data'
         type: string
       timeout:
         description: 'Backup GitHub action step timeout, in minutes.'
         required: false
-        default: 10
         type: number
       docker-image:
         description: 'The image of the backup worker. Usefull to override with specific versions.'
         required: false
-        default: 'ghcr.io/significa/fly-pg-dump-to-s3'
         type: string
 
     secrets:
@@ -49,43 +39,16 @@ jobs:
     concurrency: ${{ github.workflow }}-fly-db-backup
     timeout-minutes: ${{ inputs.timeout }}
     steps:
+      - uses: actions/checkout@v3
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Run backups
-        shell: bash
-        run: |
-          echo "Creating volume."
-          volume_id=$(
-            flyctl volumes create \
-              --json \
-              --yes \
-              --require-unique-zone=false \
-              --app="${{ inputs.fly-app }}" \
-              --size="${{ inputs.volume-size }}" \
-              --region="${{ inputs.region }}" \
-              "${{ inputs.volume-name }}" \
-            | jq -er '.id'
-          )
-          
-          echo "Starting machine with volume $volume_id."
-          flyctl machines run \
-            --app="${{ inputs.fly-app }}" \
-            --size="${{ inputs.machine-size }}" \
-            --region="${{ inputs.region }}" \
-            --volume "$volume_id:/tmp/db-backups" \
-            --restart=no \
-            --rm \
-            "${{ inputs.docker-image }}"
-          
-          echo "Waiting for volume to become detached."
-          until flyctl volumes show "$volume_id" --json | jq -er '.AttachedMachine == null'; do
-              printf "."
-              sleep 5
-          done
-
-          sleep 10
-          
-          echo "Deleting volume $volume_id"
-          flyctl volumes delete --yes "$volume_id"
+        run: ./trigger-backup.sh
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ inputs.fly-app }}
+          REGION: ${{ inputs.region }}
+          MACHINE_SIZE: ${{ inputs.machine-size }}
+          VOLUME_SIZE: ${{ inputs.volume-size }}
+          DOCKER_IMAGE: ${{ inputs.docker-image }}

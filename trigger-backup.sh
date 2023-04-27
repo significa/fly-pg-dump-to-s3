@@ -12,6 +12,9 @@ VOLUME_NAME=${VOLUME_NAME:-temp_data}
 DOCKER_IMAGE=${DOCKER_IMAGE:-ghcr.io/significa/fly-pg-dump-to-s3}
 ENSURE_NO_VOLUMES_LEFT=${ENSURE_NO_VOLUMES_LEFT-true}
 
+# Fly produces inconsistent results if we are too fast
+SLEEP_TIME_SECONDS=${SLEEP_TIME_SECONDS:-15}
+
 if [[ -z "$FLY_APP" || -z "$FLY_API_TOKEN" ]]; then
   >&2 echo "Env vars FLY_APP and FLY_API_TOKEN must not be empty"
   exit 1
@@ -41,7 +44,7 @@ flyctl machines run \
     --rm \
     "$DOCKER_IMAGE" \
 
-sleep 10
+sleep "$SLEEP_TIME_SECONDS"
 
 echo "Waiting for volume to become detached."
 until flyctl volumes show "$volume_id" --json | jq -er '.AttachedMachine == null'; do
@@ -49,12 +52,12 @@ until flyctl volumes show "$volume_id" --json | jq -er '.AttachedMachine == null
   sleep 5
 done
 
-sleep 10
+sleep "$SLEEP_TIME_SECONDS"
 
 echo "Deleting volume $volume_id"
 flyctl volumes delete --yes "$volume_id" 
 
-if "$ENSURE_NO_VOLUMES_LEFT" && fly volumes list --json | jq -e 'length != 0' ; then
+if "$ENSURE_NO_VOLUMES_LEFT" && fly volumes list --app="$FLY_APP" --json | jq -e 'length != 0' ; then
   >&2 echo "Backup completed but the app still has volumes. ENSURE_NO_VOLUMES_LEFT is true, exiting"
   exit 1
 fi

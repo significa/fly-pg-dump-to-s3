@@ -62,7 +62,7 @@ flyctl volumes delete --yes "$volume_id"
 
 sleep "$SLEEP_TIME_SECONDS"
 
-volumes_left=$(fly volumes list --app="$FLY_APP" --json)
+volumes_left=$(flyctl volumes list --app="$FLY_APP" --json)
 
 if jq -e 'length != 0' <<< "$volumes_left" > /dev/null ; then
   >&2 echo -e "WARNING: Backup completed but the app still has volumes. Response:\n$volumes_left"

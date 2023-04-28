@@ -32,8 +32,10 @@ requirements in a simple way.
    GRANT USAGE ON SCHEMA public TO db_backup_worker;
    GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
    GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
-   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public GRANT SELECT ON TABLES TOdb_backup_worker;
-   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public GRANT SELECT ON SEQUENCES TOdb_backup_worker;
+   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
+    GRANT SELECT ON TABLES TOdb_backup_worker;
+   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
+    GRANT SELECT ON SEQUENCES TOdb_backup_worker;
    -- Optionally, for PG >= 14 you could use the `pg_read_all_data` role
    ```
 
@@ -155,9 +157,9 @@ For example set `PG_DUMP_ARGS=--format=plain` and
 
 - `DATABASE_URL`: Postgres database URL.
   For example: `postgresql://username:password@test:5432/my_database`
-- `S3_DESTINATION`: AWS S3 fill file destination Postgres database URl
+- `S3_DESTINATION`: AWS S3 fill file destination Postgres database URL.
 - `BACKUP_CONFIGURATION_NAMES`: Optional: Configuration names/prefixes for `DATABASE_URL` and
-  `S3_DESTINATION`
+  `S3_DESTINATION`.
 - `BACKUPS_TEMP_DIR`: Optional: Where the temp files should go. Defaults to: `/tmp/db-backups`
 - `PG_DUMP_ARGS`: Optional: Override the default `pg_dump` args:
   `--no-owner --clean --no-privileges --jobs=4 --format=directory --compress=0`.

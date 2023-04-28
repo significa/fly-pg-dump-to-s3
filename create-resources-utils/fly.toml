@@ -1,13 +1,10 @@
+primary_region = "lhr"
 kill_signal = "SIGINT"
 kill_timeout = 10
-
-[experimental]
-  auto_rollback = false
 
 [build]
   image = "ghcr.io/significa/fly-pg-dump-to-s3"
 
-[mounts]
+[[mounts]]
   destination = "/tmp/db-backups"
   source = "temp_data"
-

@@ -5,8 +5,8 @@ set -e
 BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-60}
 
 
-read -p 'Name (ex: puzzle, bion, activeflow...): ' name
-read -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
+read -r -p 'Name (ex: puzzle, bion, activeflow...): ' name
+read -r -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
 
 bucket_name="${name}-db-backups"
 iam_user_name="${name}-db-backup-user"
@@ -79,8 +79,10 @@ aws iam put-user-policy \
 
 
 echo "Creating ${iam_user_name} access key"
-create_access_key_response=$(aws iam create-access-key \
-    --user-name ${iam_user_name})
+create_access_key_response=$(
+    aws iam create-access-key \
+    --user-name "${iam_user_name}"
+)
 
 aws_access_key_id=$(echo "${create_access_key_response}" | jq -r '.AccessKey.AccessKeyId')
 aws_secret_access_key=$(echo "${create_access_key_response}" | jq -r '.AccessKey.SecretAccessKey')

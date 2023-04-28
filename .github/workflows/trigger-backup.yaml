@@ -4,29 +4,34 @@ on:
   workflow_call:
     inputs:
       fly-app:
-        description: 'The Fly app name of your db backup worker.'
+        description: The Fly app name of your db backup worker.
         required: true
         type: string
       volume-size:
-        description: 'The volume size in GB for the volume of the backup worker.'
+        description: The volume size in GB for the volume of the backup worker.
         required: false
         type: number
       machine-size:
-        description: 'Fly machines v2 size (https://fly.io/docs/about/pricing/#machines)'
+        description: Fly machines v2 size (https://fly.io/docs/about/pricing/#machines)
         required: false
         type: string
       region:
-        description: 'The region to run the backup worker from.'
+        description: The region to run the backup worker from.
         required: false
         type: string
       timeout:
-        description: 'Backup GitHub action step timeout, in minutes.'
+        description: Backup GitHub action step timeout, in minutes.
         required: false
         type: number
       docker-image:
-        description: 'The image of the backup worker. Usefull to override with specific versions.'
+        description: The image of the backup worker. Usefull to override with specific versions.
         required: false
         type: string
+      ensure-no-volumes-left:
+        description: >-
+          Makes the action crash if when the backup finishes there are still volumes in the app
+        required: false
+        type: boolean
 
     secrets:
       FLY_API_TOKEN:
@@ -55,3 +60,4 @@ jobs:
           FLY_MACHINE_SIZE: ${{ inputs.machine-size }}
           FLY_VOLUME_SIZE: ${{ inputs.volume-size }}
           DOCKER_IMAGE: ${{ inputs.docker-image }}
+          ENSURE_NO_VOLUMES_LEFT: ${{ inputs.ensure-no-volumes-left }}

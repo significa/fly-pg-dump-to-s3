@@ -2,9 +2,9 @@
 
 This is ~~a hacky~~ an interesting way to have a Fly app that dumps postgres databases
 that are also on Fly, to AWS S3 buckets.
-It uses a dedicated app for the *backup worker* that is _woken up_ to start the dump.
+It uses a dedicated app for the _backup worker_ that is _woken up_ to start the dump.
 When it finishes it is _scaled_ back to 0, meaning **it is not billable when idle**,
-you only pay for the backup time (it is close to free, and supper affordable even with 
+you only pay for the backup time (it is close to free, and supper affordable even with
 high end machines). It leverages Fly machines to dynamically deploy volumes and servers on demand.
 
 
@@ -25,6 +25,7 @@ Have a look into [create-resources-utils](./create-resources-utils) for scripts 
 requirements in a simple way.
 
 1. In a PG shell inside your Fly Postgres instance, create an user with read permissions:
+
    ```sql
    CREATE USER db_backup_worker WITH PASSWORD '<password>';
    GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
@@ -43,22 +44,20 @@ requirements in a simple way.
    IAM policy:
    ```json
    {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Sid": "WriteDatabaseBackups",
-                "Effect": "Allow",
-                "Action": [
-                    "s3:PutObject",
-                    "s3:AbortMultipartUpload",
-                    "s3:ListMultipartUploadParts"
-                ],
-                "Resource": [
-                    "arn:aws:s3:::your-s3-bucket/backup.tar.gz"
-                ]
-            }
-        ]
-    }
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "WriteDatabaseBackups",
+         "Effect": "Allow",
+         "Action": [
+           "s3:PutObject",
+           "s3:AbortMultipartUpload",
+           "s3:ListMultipartUploadParts"
+         ],
+         "Resource": ["arn:aws:s3:::your-s3-bucket/backup.tar.gz"]
+       }
+     ]
+   }
    ```
 
 
@@ -67,15 +66,17 @@ requirements in a simple way.
 1. Launch your database backup worker with `fly apps create --machines`
 
 2. Set the required fly secrets (env vars). Example:
-    ```env
-    AWS_ACCESS_KEY_ID=XXXX
-    AWS_SECRET_ACCESS_KEY=XXXX
-    DATABASE_URL=postgresql://username:password@my-fly-db-instance.internal:5432/my_database
-    S3_DESTINATION=s3://your-s3-bucket/backup.tar.gz
-    ```
+
+   ```env
+   AWS_ACCESS_KEY_ID=XXXX
+   AWS_SECRET_ACCESS_KEY=XXXX
+   DATABASE_URL=postgresql://username:password@my-fly-db-instance.internal:5432/my_database
+   S3_DESTINATION=s3://your-s3-bucket/backup.tar.gz
+   ```
 
 3. OPTION A: Run `./trigger-backup.sh` whenever you want to start a backup.
-   - `FLY_APP`: (Required) Your fly application.  
+
+   - `FLY_APP`: (Required) Your fly application.
    - `FLY_API_TOKEN`: (Required) Fly token (PAT or Deploy token).
    - `FLY_REGION`: the region of the volume and consequently the region where the worker will run.
      Choose one close to the db and the AWS bucket region. Defaults to `cdg`.
@@ -87,33 +88,32 @@ requirements in a simple way.
      Option to override the default docker image `ghcr.io/significa/fly-pg-dump-to-s3:3`
    - `ENSURE_NO_VOLUMES_LEFT`: When the backup completes and the volume is deleted, checks if there
      are any volumes still available, and crashes if so. This might be useful to alert that there
-     are dangling volumes (that you might want to be paying). Defaults to `true`. If you are making
-     concurrent backups, set it to `false`.
+     are dangling volumes (that you might want to be paying for).
+     Defaults to `false` (warning to stderr only).
 
-   The volume will be deleted when the backup finishes.
-   
-   OPTION B: Optionally you can use the reusable GitHub Actions workflow from found in
+   OPTION B: Call the reusable GitHub Actions workflow found in
    `.github/workflows/trigger-backup.yaml`. Example workflow definition:
 
-    ```yaml
-    name: Backup databases
-    on:
-        workflow_dispatch:
-        schedule:
-            # Runs Every day at 5:00am UTC
-            - cron: "00 5 * * *"
+   ```yaml
+   name: Backup databases
+   on:
+     workflow_dispatch:
+     schedule:
+       # Runs Every day at 5:00am UTC
+       - cron: "00 5 * * *"
 
-    jobs:
-        backup-databases:
-            name: Backup databases
-            uses: significa/fly-pg-dump-to-s3/.github/workflows/trigger-backup.yaml@v3
-            with:
-                fly-app: my-db-backup-worker
-                volume-size: 3
-                region: ewr
-            secrets:
-                FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-    ```
+   jobs:
+     backup-databases:
+       name: Backup databases
+       uses: significa/fly-pg-dump-to-s3/.github/workflows/trigger-backup.yaml@v3
+       with:
+         fly-app: my-db-backup-worker
+         volume-size: 3
+         machine-size: shared-cpu-4x
+         region: ewr
+       secrets:
+         FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+   ```
 
 
 ## Backup history

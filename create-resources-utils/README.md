@@ -5,7 +5,7 @@
 - jq
 - aws-cli version 2
 - aws logged in
-- fly authenticated
+- flyctl authenticated
 
 ## Create AWS resources
 

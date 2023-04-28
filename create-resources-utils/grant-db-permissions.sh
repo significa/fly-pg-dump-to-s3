@@ -35,8 +35,8 @@ for database_name in "${database_names[@]}"; do
             EXECUTE format(\$\$ GRANT USAGE ON SCHEMA %I TO ${database_backup_worker_user} \$\$, schemaname);
             EXECUTE format(\$\$ GRANT SELECT ON ALL TABLES IN SCHEMA %I TO ${database_backup_worker_user} \$\$, schemaname);
             EXECUTE format(\$\$ GRANT SELECT ON ALL SEQUENCES IN SCHEMA %I TO ${database_backup_worker_user} \$\$, schemaname);
-            EXECUTE format(\$\$ ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT ON TABLES TO ${database_backup_worker_user} \$\$, schemaname);
-            EXECUTE format(\$\$ ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT ON SEQUENCES TO ${database_backup_worker_user} \$\$, schemaname);
+            EXECUTE format(\$\$ ALTER DEFAULT PRIVILEGES FOR USER ${database_backup_worker_user} IN SCHEMA %I GRANT SELECT ON TABLES TO ${database_backup_worker_user} \$\$, schemaname);
+            EXECUTE format(\$\$ ALTER DEFAULT PRIVILEGES FOR USER ${database_backup_worker_user} IN SCHEMA %I GRANT SELECT ON SEQUENCES TO ${database_backup_worker_user} \$\$, schemaname);
         END LOOP;
     END;
     \$grant_permissions\$;

@@ -10,17 +10,22 @@ on:
       volume-size:
         description: 'The volume size in GB for the volume of the backup worker.'
         required: false
-        default: 5
         type: number
+      machine-size:
+        description: 'Fly machines v2 size (https://fly.io/docs/about/pricing/#machines)'
+        required: false
+        type: string
       region:
         description: 'The region to run the backup worker from.'
         required: false
-        default: 'cdg'
         type: string
-      volume-name:
-        description: 'The db backup worker volume name.'
+      timeout:
+        description: 'Backup GitHub action step timeout, in minutes.'
         required: false
-        default: 'temp_data'
+        type: number
+      docker-image:
+        description: 'The image of the backup worker. Usefull to override with specific versions.'
+        required: false
         type: string
 
     secrets:
@@ -29,20 +34,21 @@ on:
 
 jobs:
   backup_db:
-    name: Trigger backup worker
+    name: Perform database backups
     runs-on: ubuntu-latest
-    concurrency: fly-db-backup
-    timeout-minutes: 10
+    concurrency: ${{ github.workflow }}-fly-db-backup
+    timeout-minutes: ${{ inputs.timeout }}
     steps:
+      - uses: actions/checkout@v3
+
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Create worker volume
-        run: |
-          flyctl \
-            volumes create ${{ inputs.volume-name }} \
-            --no-encryption \
-            --size ${{ inputs.volume-size }} \
-            --region ${{ inputs.region }} \
-            --app ${{ inputs.fly-app }}
+      - name: Run backups
+        run: ./trigger-backup.sh
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: ${{ inputs.fly-app }}
+          FLY_REGION: ${{ inputs.region }}
+          FLY_MACHINE_SIZE: ${{ inputs.machine-size }}
+          FLY_VOLUME_SIZE: ${{ inputs.volume-size }}
+          DOCKER_IMAGE: ${{ inputs.docker-image }}

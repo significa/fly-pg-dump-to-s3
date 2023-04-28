@@ -35,17 +35,4 @@ backup_databases () {
 
 backup_databases || echo "ERROR backing up, see the logs above."
 
-if [[ -n $FLY_APP_NAME && -n $FLY_API_TOKEN ]]; then
-  volume_id=$(
-    fly volumes list -a "$FLY_APP_NAME" --json \
-    | jq -r 'map(select(.AttachedAllocation != null )) | first.id'
-  )
- 
-  echo "Deleting volume $volume_id"
-  fly volumes delete "$volume_id" --yes
-
-  echo "Done! Sleeping..."
-  sleep infinity
-fi
-
 echo "Exiting"

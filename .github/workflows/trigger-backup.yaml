@@ -40,11 +40,14 @@ jobs:
     timeout-minutes: ${{ inputs.timeout }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          repository: significa/fly-pg-dump-to-s3
+          path: ./fly-pg-dump-to-s3
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Run backups
-        run: ./trigger-backup.sh
+        run: ./fly-pg-dump-to-s3/trigger-backup.sh
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP: ${{ inputs.fly-app }}

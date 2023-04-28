@@ -5,20 +5,23 @@
 
 set -e
 
-REGION=${REGION:-cdg}
-MACHINE_SIZE=${MACHINE_SIZE:-shared-cpu-4x}
-VOLUME_SIZE=${VOLUME_SIZE:-3}
-VOLUME_NAME=${VOLUME_NAME:-temp_data}
-DOCKER_IMAGE=${DOCKER_IMAGE:-ghcr.io/significa/fly-pg-dump-to-s3}
+# Configuration parameters
+FLY_REGION=${FLY_REGION:-cdg}
+FLY_MACHINE_SIZE=${FLY_MACHINE_SIZE:-shared-cpu-4x}
+FLY_VOLUME_SIZE=${FLY_VOLUME_SIZE:-3}
+DEFAULT_DOCKER_IMAGE="ghcr.io/significa/fly-pg-dump-to-s3:3"
+DOCKER_IMAGE=${DOCKER_IMAGE:-$DEFAULT_DOCKER_IMAGE}
 ENSURE_NO_VOLUMES_LEFT=${ENSURE_NO_VOLUMES_LEFT-true}
-
-# Fly produces inconsistent results if we are too fast
-SLEEP_TIME_SECONDS=${SLEEP_TIME_SECONDS:-15}
 
 if [[ -z "$FLY_APP" || -z "$FLY_API_TOKEN" ]]; then
   >&2 echo "Env vars FLY_APP and FLY_API_TOKEN must not be empty"
   exit 1
 fi
+
+# Fly produces inconsistent results if we are too fast
+SLEEP_TIME_SECONDS=${SLEEP_TIME_SECONDS:-15}
+VOLUME_NAME=${VOLUME_NAME:-temp_data}
+
 
 echo "Creating volume"
 volume_id=$(
@@ -28,8 +31,8 @@ volume_id=$(
     --require-unique-zone=false \
     --no-encryption \
     --app="$FLY_APP" \
-    --size="$VOLUME_SIZE" \
-    --region="$REGION" \
+    --size="$FLY_VOLUME_SIZE" \
+    --region="$FLY_REGION" \
     "$VOLUME_NAME" \
   | jq -er '.id'
 )
@@ -37,8 +40,8 @@ volume_id=$(
 echo "Starting machine with volume $volume_id"
 flyctl machines run \
     --app="$FLY_APP" \
-    --size="$MACHINE_SIZE" \
-    --region="$REGION" \
+    --size="$FLY_MACHINE_SIZE" \
+    --region="$FLY_REGION" \
     --volume "$volume_id:/tmp/db-backups" \
     --restart=no \
     --rm \

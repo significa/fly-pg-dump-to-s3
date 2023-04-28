@@ -48,7 +48,7 @@ jobs:
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           FLY_APP: ${{ inputs.fly-app }}
-          REGION: ${{ inputs.region }}
-          MACHINE_SIZE: ${{ inputs.machine-size }}
-          VOLUME_SIZE: ${{ inputs.volume-size }}
+          FLY_REGION: ${{ inputs.region }}
+          FLY_MACHINE_SIZE: ${{ inputs.machine-size }}
+          FLY_VOLUME_SIZE: ${{ inputs.volume-size }}
           DOCKER_IMAGE: ${{ inputs.docker-image }}

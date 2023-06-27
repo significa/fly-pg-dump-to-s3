@@ -5,7 +5,7 @@ set -e
 BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-60}
 
 
-read -r -p 'Name (ex: puzzle, bion, activeflow...): ' name
+read -r -p 'Project prefix (will create resources like: PREFIX-db-backups PREFIX-db-backup-user): ' name
 read -r -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
 
 bucket_name="${name}-db-backups"
@@ -17,7 +17,7 @@ aws s3api create-bucket \
     --bucket "${bucket_name}" \
     --region "${region}" \
     --create-bucket-configuration LocationConstraint="${region}" \
-    --no-cli-pager
+    --no-paginate
 
 
 echo "Enabling bucket versioning"
@@ -51,7 +51,7 @@ aws s3api put-bucket-lifecycle-configuration \
 echo "Creating user ${iam_user_name}"
 aws iam create-user \
     --user-name "${iam_user_name}" \
-    --no-cli-pager
+    --no-paginate
 
 
 db_backup_access_policy="{
@@ -87,6 +87,7 @@ create_access_key_response=$(
 aws_access_key_id=$(echo "${create_access_key_response}" | jq -r '.AccessKey.AccessKeyId')
 aws_secret_access_key=$(echo "${create_access_key_response}" | jq -r '.AccessKey.SecretAccessKey')
 
+echo -e "Done. Save the following environemnt variables:\n"
 
 echo "AWS_ACCESS_KEY_ID=${aws_access_key_id}"
 echo "AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}"

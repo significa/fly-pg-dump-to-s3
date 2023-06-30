@@ -1,6 +1,7 @@
 FROM alpine
 
-RUN apk add --no-cache bash curl aws-cli postgresql-client && \
+RUN apk update && \
+    apk add --no-cache bash curl aws-cli postgresql-client && \
     curl -L https://fly.io/install.sh | sh
 
 ENV PATH="/root/.fly/bin:$PATH"

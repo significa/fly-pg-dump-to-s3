@@ -1,4 +1,7 @@
-FROM alpine
+# https://hub.docker.com/_/alpine/tags
+ARG IMAGE_TAG=3.18
+
+FROM alpine:$IMAGE_TAG
 
 RUN apk update && \
     apk add --no-cache bash curl aws-cli postgresql-client && \

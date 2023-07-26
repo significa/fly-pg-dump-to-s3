@@ -51,7 +51,7 @@ flyctl machines run \
 
 sleep "$SLEEP_TIME_SECONDS"
 
-echo "Waiting for volume to become detached."
+echo "Waiting for volume to become detached"
 until flyctl volumes show "$volume_id" --json | jq -er '.AttachedMachine == null' > /dev/null; do
   printf "."
   sleep "$SLEEP_TIME_SECONDS"
@@ -61,14 +61,14 @@ sleep "$SLEEP_TIME_SECONDS"
 
 volume_id=vol_nylzrem87pd4qmk
 
-echo "Deleting volume $volume_id"
+echo "Deleting volume '$volume_id'"
 attempt_num=0
 set +e
 while ! flyctl volumes delete --yes "$volume_id"; do
   attempt_num=$(( attempt_num + 1 ))
 
   if [ $attempt_num -ge $MAX_RETRIES ]; then
-    echo "Exceeded max retries ($MAX_RETRIES) deleting volume $volume_id , aborting."
+    echo "Exceeded max retries ($MAX_RETRIES) deleting volume '$volume_id', exiting"
     exit 1
   fi
 
@@ -84,7 +84,7 @@ if jq -e 'length != 0' <<< "$volumes_left" > /dev/null ; then
   >&2 echo -e "WARNING: Backup completed but the app still has volumes. Response:\n$volumes_left"
 
   if "$ERROR_ON_DANGLING_VOLUMES" ; then
-    >&2 echo "ERROR: ERROR_ON_DANGLING_VOLUMES is true, exiting."
+    >&2 echo "ERROR: ERROR_ON_DANGLING_VOLUMES is true, exiting"
     exit 1
   fi
 fi

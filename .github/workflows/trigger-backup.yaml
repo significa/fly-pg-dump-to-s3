@@ -27,9 +27,9 @@ on:
         description: The image of the backup worker. Usefull to override with specific versions.
         required: false
         type: string
-      ensure-no-volumes-left:
+      error-on-dangling-volumes:
         description: >-
-          Makes the action crash if when the backup finishes there are still volumes in the app
+          Makes the action crash if when the backup finishes there are still volumes in the app.
         required: false
         type: boolean
 
@@ -60,4 +60,4 @@ jobs:
           FLY_MACHINE_SIZE: ${{ inputs.machine-size }}
           FLY_VOLUME_SIZE: ${{ inputs.volume-size }}
           DOCKER_IMAGE: ${{ inputs.docker-image }}
-          ENSURE_NO_VOLUMES_LEFT: ${{ inputs.ensure-no-volumes-left }}
+          ERROR_ON_DANGLING_VOLUMES: ${{ inputs.error-on-dangling-volumes }}

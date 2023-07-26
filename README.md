@@ -86,10 +86,9 @@ requirements in a simple way.
      backup, set it accordingly to the size of the db. Defaults to `3`.
    - `DOCKER_IMAGE`:
      Option to override the default docker image `ghcr.io/significa/fly-pg-dump-to-s3:3`
-   - `ENSURE_NO_VOLUMES_LEFT`: When the backup completes and the volume is deleted, checks if there
-     are any volumes still available, and crashes if so. This might be useful to alert that there
-     are dangling volumes (that you might want to be paying for).
-     Defaults to `false` (warning to stderr only).
+   - `ERROR_ON_DANGLING_VOLUMES`: After the backup completes, checks if there are any volumes still
+     available, and crashes if so. This might be useful to alert that there are dangling volumes
+     (that you might want to be paying for). Defaults to `true`.
 
    OPTION B: Call the reusable GitHub Actions workflow found in
    `.github/workflows/trigger-backup.yaml`. Example workflow definition:

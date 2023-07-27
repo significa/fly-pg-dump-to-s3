@@ -89,6 +89,10 @@ requirements in a simple way.
    - `ERROR_ON_DANGLING_VOLUMES`: After the backup completes, checks if there are any volumes still
      available, and crashes if so. This might be useful to alert that there are dangling volumes
      (that you might want to be paying for). Defaults to `true`.
+   - `DELETE_ALL_VOLUMES`: True to delete all volumes in the backup worker instead of the one used
+      in the machine. Fly has been very inconsistent with what volume does the machine start.
+      This solves the problem but prevents having multiple backup workers running in the same app.
+      Default to `true`.
 
    OPTION B: Call the reusable GitHub Actions workflow found in
    `.github/workflows/trigger-backup.yaml`. Example workflow definition:

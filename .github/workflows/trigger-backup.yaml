@@ -31,7 +31,21 @@ on:
         description: >-
           Makes the action crash if when the backup finishes there are still volumes in the app.
         required: false
+        default: true
         type: boolean
+      delete-al-volumes:
+        description: >-
+          Deletes all volumes in the backup worker after the backup has completed.
+        required: false
+        default: true
+        type: boolean
+      action-ref:
+        description: >-
+          The `ref` to clone the trigger backup script from. Allows to override GitHub's context
+          `github.action_ref` when it does not behave properly.
+        required: false
+        default: ${{ github.action_ref }}
+        type: string
 
     secrets:
       FLY_API_TOKEN:
@@ -48,6 +62,7 @@ jobs:
         with:
           repository: significa/fly-pg-dump-to-s3
           path: ./fly-pg-dump-to-s3
+          ref: ${{ inputs.action-ref }}
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -61,3 +76,4 @@ jobs:
           FLY_VOLUME_SIZE: ${{ inputs.volume-size }}
           DOCKER_IMAGE: ${{ inputs.docker-image }}
           ERROR_ON_DANGLING_VOLUMES: ${{ inputs.error-on-dangling-volumes }}
+          DELETE_ALL_VOLUMES: ${{ inputs.delete-al-volumes }}

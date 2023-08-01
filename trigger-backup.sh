@@ -11,13 +11,14 @@ FLY_MACHINE_SIZE=${FLY_MACHINE_SIZE:-shared-cpu-4x}
 FLY_VOLUME_SIZE=${FLY_VOLUME_SIZE:-3}
 DEFAULT_DOCKER_IMAGE="ghcr.io/significa/fly-pg-dump-to-s3:3"
 DOCKER_IMAGE=${DOCKER_IMAGE:-$DEFAULT_DOCKER_IMAGE}
-ERROR_ON_DANGLING_VOLUMES=${ERROR_ON_DANGLING_VOLUMES-true}
+ERROR_ON_DANGLING_VOLUMES=${ERROR_ON_DANGLING_VOLUMES:-true}
+DELETE_ALL_VOLUMES=${DELETE_ALL_VOLUMES:-true}
 VOLUME_NAME=${VOLUME_NAME:-temp_data}
 MAX_RETRIES=6
 
 # Fly has been proucing very inconsistent results, where the state is not propagated.
 # TODO: Sleeping between operations is not ideal.
-SLEEP_TIME_SECONDS=${SLEEP_TIME_SECONDS:-10}
+SLEEP_TIME_SECONDS=${SLEEP_TIME_SECONDS:-15}
 
 if [[ -z "$FLY_APP" || -z "$FLY_API_TOKEN" ]]; then
   >&2 echo "Env vars FLY_APP and FLY_API_TOKEN must not be empty"
@@ -61,14 +62,23 @@ sleep "$SLEEP_TIME_SECONDS"
 
 volume_id=vol_nylzrem87pd4qmk
 
-echo "Deleting volume '$volume_id'"
+delete_volume_or_volumes () {
+  if "$DELETE_ALL_VOLUMES" ; then
+    echo "Deleting all volumes in app '$FLY_APP'"
+    flyctl volumes list --json -a "$FLY_APP" | jq -r '.[].id' |  xargs -n1 flyctl volumes delete --yes
+  else
+    echo "Deleting volume '$volume_id'"
+    flyctl volumes delete --yes "$volume_id"
+  fi
+}
+
 attempt_num=0
 set +e
-while ! flyctl volumes delete --yes "$volume_id"; do
+while ! delete_volume_or_volumes; do
   attempt_num=$(( attempt_num + 1 ))
 
   if [ $attempt_num -ge $MAX_RETRIES ]; then
-    echo "Exceeded max retries ($MAX_RETRIES) deleting volume '$volume_id', exiting"
+    echo "Exceeded max retries ($MAX_RETRIES) deleting volume(s), exiting"
     exit 1
   fi
 

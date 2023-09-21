@@ -41,9 +41,9 @@ volume_id=$(
 )
 
 echo "Starting machine with volume $volume_id"
-flyctl machines run \
+flyctl machine run \
     --app="$FLY_APP" \
-    --size="$FLY_MACHINE_SIZE" \
+    --vm-size="$FLY_MACHINE_SIZE" \
     --region="$FLY_REGION" \
     --volume "$volume_id:/tmp/db-backups" \
     --restart=no \

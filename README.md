@@ -4,11 +4,13 @@ Utilities to backup a Fly.io Postgres database to AWS S3 buckets.
 
 This repository contains two backup strategies:
 
-1. The simple method: a github action that connects to your fly application and dumps it to AWS S3.
-   Quite useful got tiny databases.
+1. The simple method: a github action that connects to your Fly.io application and dumps it to AWS
+   S3. Quite useful for small projects (where the database is not that big).
+
+   Advantages: simplicity, maintenance free and easy to understand.
 
 2. A more complex setup, useful for bigger databases, which triggers a backup workers via github
-   actions and performs the database dump and backup upload directly within the Fly infrastructure.
+   actions and performs the database dump, and backup upload directly within the Fly infrastructure.
    From my experience the latency and bandwidth from Fly to AWS is extremely good, meaning it we
    can create medium sized backups rather quickly.
    It uses a dedicated app for the _backup worker_ that is _woken up_ to start the dump.
@@ -16,6 +18,10 @@ This repository contains two backup strategies:
    you only pay for the backup time (it is close to free, and supper affordable even with
    high end machines).
    It leverages Fly machines to dynamically deploy volumes and servers on demand.
+   
+   Advantages: handles bigger databases, performs backups quickly with performant Fly.io machines
+   (instead of slow github actions), data does directly from Fly to your bucket without going
+   though GitHub (security, compliance and obviously performance).
 
 ## Why this?
 

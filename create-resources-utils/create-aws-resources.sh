@@ -87,7 +87,7 @@ create_access_key_response=$(
 aws_access_key_id=$(echo "${create_access_key_response}" | jq -r '.AccessKey.AccessKeyId')
 aws_secret_access_key=$(echo "${create_access_key_response}" | jq -r '.AccessKey.SecretAccessKey')
 
-echo -e "Done. Save the following environemnt variables:\n"
+echo -e "Done. Save the following environment variables:\n"
 
 echo "AWS_ACCESS_KEY_ID=${aws_access_key_id}"
 echo "AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}"

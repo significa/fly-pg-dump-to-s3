@@ -5,11 +5,22 @@ set -e
 BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-60}
 
 
-read -r -p 'Project prefix (will create resources like: PREFIX-db-backups PREFIX-db-backup-user): ' name
+read -r -p 'Project prefix (will create resources like: PREFIX-db-backups PREFIX-db-backup-user, etc): ' name
 read -r -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
 
 bucket_name="${name}-db-backups"
 iam_user_name="${name}-db-backup-user"
+
+echo "You are about to create the following resources:"
+echo "Bucket Name: ${bucket_name}"
+echo "IAM User Name: ${iam_user_name}"
+
+read -r -p "Do you want to proceed with these? (yes/no): " accept_input
+
+if [[ "$accept_input" != "yes" ]]; then
+    read -r -p "Please enter the bucket name (ex: $bucket_name): " bucket_name
+    read -r -p "Please enter the IAM user name (ex: $iam_user_name): " iam_user_name
+fi
 
 
 echo "Creating bucket ${bucket_name}"

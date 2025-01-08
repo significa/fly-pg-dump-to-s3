@@ -1,69 +1,68 @@
 # Fly pg_dump to AWS S3
 
-This is ~~a hacky~~ an interesting way to have a Fly app that dumps postgres databases
-that are also on Fly, to AWS S3 buckets.
-It uses a dedicated app for the _backup worker_ that is _woken up_ to start the dump.
-When it finishes it is _scaled_ back to 0, meaning **it is not billable when idle**,
-you only pay for the backup time (it is close to free, and supper affordable even with
-high end machines). It leverages Fly machines to dynamically deploy volumes and servers on demand.
+Utilities to backup a Fly.io Postgres database to AWS S3 buckets.
 
+This repository contains two backup strategies:
+
+1. The simple method: a github action that connects to your fly application and dumps it to AWS S3.
+   Quite useful got tiny databases.
+
+2. A more complex setup, useful for bigger databases, which triggers a backup workers via github
+   actions and performs the database dump and backup upload directly within the Fly infrastructure.
+   From my experience the latency and bandwidth from Fly to AWS is extremely good, meaning it we
+   can create medium sized backups rather quickly.
+   It uses a dedicated app for the _backup worker_ that is _woken up_ to start the dump.
+   When it finishes it is _scaled_ back to 0, meaning **it is not billable when idle**,
+   you only pay for the backup time (it is close to free, and supper affordable even with
+   high end machines).
+   It leverages Fly machines to dynamically deploy volumes and servers on demand.
 
 ## Why this?
 
 Indeed Fly's pg images support `wal-g` config to S3 via env vars.
 But I wanted a way to create simple archives periodically with `pg_dump`,
-making it easy for developers to replicate databases, and have a **point in time recovery**.
-
-Since this setup is running the backup worker on Fly, and not in some other external service like
-AWS or GitHub Actions, **we can create backups rather quickly**.
-From our experience the latency and bandwidth from Fly to AWS is extremely good.
+making it easy for developers to replicate databases, and have a simple daily snapshot that can be
+restored with `pg_restore`.
 
 
-## Requirements
+## Setup
 
-Have a look into [create-resources-utils](./create-resources-utils) for scripts to setup all the
-requirements in a simple way.
+Create your resources, credentials and permissions following the
+[create resources utils documentation](./create-resources-utils).
 
-1. In a PG shell inside your Fly Postgres instance, create an user with read permissions:
+### Method 1: Simple github actions backup
 
-   ```sql
-   CREATE USER db_backup_worker WITH PASSWORD '<password>';
-   GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
-   -- For each schema (ex: public):
-   GRANT USAGE ON SCHEMA public TO db_backup_worker;
-   GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
-   GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
-   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
-    GRANT SELECT ON TABLES TO db_backup_worker;
-   ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
-    GRANT SELECT ON SEQUENCES TO db_backup_worker;
-   -- Optionally, for PG >= 14 you could use the `pg_read_all_data` role
-   ```
+Create a `.github/workflows/backup-database.yaml` in your project:
 
-2. Create an AWS S3 bucket and an access token with write permissions to it.
-   IAM policy:
-   ```json
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Sid": "WriteDatabaseBackups",
-         "Effect": "Allow",
-         "Action": [
-           "s3:PutObject",
-           "s3:AbortMultipartUpload",
-           "s3:ListMultipartUploadParts"
-         ],
-         "Resource": ["arn:aws:s3:::your-s3-bucket/backup.tar.gz"]
-       }
-     ]
-   }
-   ```
+```yaml
+name: Backup database
 
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 6:22am UTC
+    - cron: "22 6 * * *"
 
-## Installation
+jobs:
+  backup-db:
+    name: Backup db
+    uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db.yaml
+    with:
+      fly-db-name: your-fly-db-name
+    secrets:
+      FLY_API_TOKEN: ${{ secrets.DB_BACKUP_FLY_API_TOKEN }}
+      DATABASE_URL: ${{ secrets.DB_BACKUP_DATABASE_URL }}
+      S3_DESTINATION_URL: ${{ secrets.DB_BACKUP_S3_DESTINATION_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.DB_BACKUP_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.DB_BACKUP_AWS_SECRET_ACCESS_KEY }}
+```
 
-1. Launch your database backup worker with `fly apps create --machines`
+That's it, trigger the backup at any time with the `workflow_dispatch` event and adapt the 
+`schedule` to your preference.
+
+### Method 2: Worker installation
+
+1. Launch your database backup worker with `fly apps create`
 
 2. Set the required fly secrets (env vars). Example:
 
@@ -74,27 +73,7 @@ requirements in a simple way.
    S3_DESTINATION=s3://your-s3-bucket/backup.tar.gz
    ```
 
-3. OPTION A: Run `./trigger-backup.sh` whenever you want to start a backup.
-
-   - `FLY_APP`: (Required) Your fly application.
-   - `FLY_API_TOKEN`: (Required) Fly token (PAT or Deploy token).
-   - `FLY_REGION`: the region of the volume and consequently the region where the worker will run.
-     Choose one close to the db and the AWS bucket region. Defaults to `cdg`.
-   - `FLY_MACHINE_SIZE`: the fly machine size, list available in
-     [Fly's pricing page](https://fly.io/docs/about/pricing/#machines). Defaults to `shared-cpu-4x`
-   - `FLY_VOLUME_SIZE`: the size of the temporary disk where the ephemeral files live during the
-     backup, set it accordingly to the size of the db. Defaults to `3`.
-   - `DOCKER_IMAGE`:
-     Option to override the default docker image `ghcr.io/significa/fly-pg-dump-to-s3:3`
-   - `ERROR_ON_DANGLING_VOLUMES`: After the backup completes, checks if there are any volumes still
-     available, and crashes if so. This might be useful to alert that there are dangling volumes
-     (that you might want to be paying for). Defaults to `true`.
-   - `DELETE_ALL_VOLUMES`: True to delete all volumes in the backup worker instead of the one used
-      in the machine. Fly has been very inconsistent with what volume does the machine start.
-      This solves the problem but prevents having multiple backup workers running in the same app.
-      Default to `true`.
-
-   OPTION B: Call the reusable GitHub Actions workflow found in
+3. Automate the Call the reusable GitHub Actions workflow found in
    `.github/workflows/trigger-backup.yaml`. Example workflow definition:
 
    ```yaml
@@ -117,6 +96,26 @@ requirements in a simple way.
        secrets:
          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
    ```
+   
+You can also trigger a manual backup without GitHub actions with `./trigger-backup.sh`:
+
+   - `FLY_APP`: (Required) Your fly application.
+   - `FLY_API_TOKEN`: (Required) Fly token (PAT or Deploy token).
+   - `FLY_REGION`: the region of the volume and consequently the region where the worker will run.
+     Choose one close to the db and the AWS bucket region. Defaults to `cdg`.
+   - `FLY_MACHINE_SIZE`: the fly machine size, list available in
+     [Fly's pricing page](https://fly.io/docs/about/pricing/#machines). Defaults to `shared-cpu-4x`
+   - `FLY_VOLUME_SIZE`: the size of the temporary disk where the ephemeral files live during the
+     backup, set it accordingly to the size of the db. Defaults to `3`.
+   - `DOCKER_IMAGE`:
+     Option to override the default docker image `ghcr.io/significa/fly-pg-dump-to-s3:3`
+   - `ERROR_ON_DANGLING_VOLUMES`: After the backup completes, checks if there are any volumes still
+     available, and crashes if so. This might be useful to alert that there are dangling volumes
+     (that you might want to be paying for). Defaults to `true`.
+   - `DELETE_ALL_VOLUMES`: True to delete all volumes in the backup worker instead of the one used
+      in the machine. Fly has been very inconsistent with what volume does the machine start.
+      This solves the problem but prevents having multiple backup workers running in the same app.
+      Default to `true`.
 
 
 ## Backup history
@@ -171,7 +170,7 @@ For example set `PG_DUMP_ARGS=--format=plain` and
 ## Will this work outside fly?
 
 Yes, everything that is part of the backup worker (docker image) will work outside Fly.
-The script `./trigger-backup.sh` and the GitHub workflow is obviously targetted to fly apps.
+The script `./trigger-backup.sh` and the GitHub workflow is obviously targeted to fly apps.
 
 
 ## Migrating to v3 (Fly machines - apps v2)
@@ -183,3 +182,46 @@ Migrating an existing backup worker should be quite simple:
 2. Migrate your app to v2: `fly migrate-to-v2 -a YOUR_APP`
 3. Start making use of `trigger-backup.sh` or the action `.github/workflows/trigger-backup.yaml`
    to trigger the backup.
+
+
+## Manual resource creation
+
+To create the resources without the scripts in [create-resources-utils](./create-resources-utils),
+one could do it with:
+
+Postgres user setup:
+
+```sql
+CREATE USER db_backup_worker WITH PASSWORD '<password>';
+GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
+-- For each schema (ex: public):
+GRANT USAGE ON SCHEMA public TO db_backup_worker;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
+ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
+GRANT SELECT ON TABLES TO db_backup_worker;
+ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
+GRANT SELECT ON SEQUENCES TO db_backup_worker;
+-- Optionally, for PG >= 14 you could use the `pg_read_all_data` role
+```
+
+Create an AWS S3 bucket and an access token with write permissions to it, attaching the following
+IAM policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WriteDatabaseBackups",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": ["arn:aws:s3:::your-s3-bucket/backup.tar.gz"]
+    }
+  ]
+}
+```

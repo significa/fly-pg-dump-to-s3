@@ -9,7 +9,7 @@
 
 ## Create AWS resources
 
-`./create-aws-resources.sh` 
+`./create-aws-resources.sh`
 
 1. Creates and configure bucket for the backups
 2. Creates user with write permissions for the backup bucket

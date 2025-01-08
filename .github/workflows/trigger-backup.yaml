@@ -1,4 +1,4 @@
-name: Backup fly DBs
+name: Trigger Fly DB Backup
 
 on:
   workflow_call:

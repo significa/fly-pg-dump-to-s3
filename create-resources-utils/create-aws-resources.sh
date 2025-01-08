@@ -5,11 +5,22 @@ set -e
 BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-60}
 
 
-read -r -p 'Project prefix (will create resources like: PREFIX-db-backups PREFIX-db-backup-user): ' name
+read -r -p 'Project prefix (will create resources like: PREFIX-db-backups PREFIX-db-backup-user, etc): ' name
 read -r -p 'Aws region to create the bucket (ex: eu-central-1, eu-west-3): ' region
 
 bucket_name="${name}-db-backups"
 iam_user_name="${name}-db-backup-user"
+
+echo "You are about to create the following resources:"
+echo "Bucket Name: ${bucket_name}"
+echo "IAM User Name: ${iam_user_name}"
+
+read -r -p "Do you want to proceed with these? (yes/no): " accept_input
+
+if [[ "$accept_input" != "yes" ]]; then
+    read -r -p "Please enter the bucket name (ex: $bucket_name): " bucket_name
+    read -r -p "Please enter the IAM user name (ex: $iam_user_name): " iam_user_name
+fi
 
 
 echo "Creating bucket ${bucket_name}"
@@ -87,7 +98,7 @@ create_access_key_response=$(
 aws_access_key_id=$(echo "${create_access_key_response}" | jq -r '.AccessKey.AccessKeyId')
 aws_secret_access_key=$(echo "${create_access_key_response}" | jq -r '.AccessKey.SecretAccessKey')
 
-echo -e "Done. Save the following environemnt variables:\n"
+echo -e "Done. Save the following environment variables:\n"
 
 echo "AWS_ACCESS_KEY_ID=${aws_access_key_id}"
 echo "AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}"

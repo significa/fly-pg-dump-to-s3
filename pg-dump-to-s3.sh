@@ -3,13 +3,13 @@
 set -e
 
 _USAGE="
-Usage: ./backup-db <database_url> <s3-destination>
+Usage: ./backup-db <database-url> <s3-destination>
 Examples:
   ./backup-db postgresql://username:password@hostname:5432/my_database s3://my-bucket-name/my_backup.tar.gz
   PG_DUMP_ARGS=\"--format=plain\" ./backup-db postgresql://user:pass@host/db s3://bucket/backup.sql
 
-By default we do not compress with pg_dump as we want concurrrency,
-later we compress with tar manually. Customize this behaviour with PG_DUMP_ARGS env var.
+By default we do not compress with pg_dump as we want concurrency,
+later we compress with tar manually. Customize this behavior with PG_DUMP_ARGS env var.
 Tar will only be called in case the pg_dump output is a directory.
 "
 

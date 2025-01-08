@@ -1,18 +1,24 @@
 # Create Resources Utils
 
+Utilities to easily create resources, permissions amd credentials on Fly.io, AWS and Postgres.
+
+All scripts here do not require parameters and guide you through the process of creating the resources.
+
 ## Requirements
+
+These dependencies must be present on the system 
 
 - jq
 - aws-cli version 2
-- aws logged in
-- flyctl authenticated
+- aws (authenticated with buckets and IAM management permissions)
+- flyctl (authenticated)
 
 ## Create AWS resources
 
-`./create-aws-resources.sh` 
+`./create-aws-resources.sh`
 
-1. Creates and configure bucket for the backups
-2. Creates user with write permissions for the backup bucket
+1. Creates and configure bucket for the backups.
+2. Creates a IAM user with write permissions for the backup bucket.
 
 Output:
 
@@ -36,12 +42,14 @@ Output:
 
 ```
 [ENV]_DATABASE_URL=postgres://username:password@top2.nearest.of.example-db.internal:5432/database_name
-...
 ```
 
-## Create Fly.io resources
+## Create Fly.io backup worker (optional)
 
-`./create-fly-resources.sh`
+Only used in the **Method 2**, where a backup work app is needed.
+If you are using the simple method backing up directly from GitHub, skip this step. 
+
+`./create-fly-backup-worker.sh`
 
 1. Creates database backup worker app on fly.io
 2. Creates volume for worker app
@@ -52,4 +60,3 @@ After, you need will to import the secrets to the worker app and deploy it using
 fly -a [db-backup-worker-app] secrets import < .env
 fly -a [db-backup-worker-app] deploy --remote-only
 ```
-

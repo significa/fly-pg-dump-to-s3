@@ -1,0 +1,22 @@
+name: Build and push image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    name: Build and push image
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    uses: significa/actions/.github/workflows/docker-image.yaml@main
+    with:
+      image_name: fly-pg-dump-to-s3

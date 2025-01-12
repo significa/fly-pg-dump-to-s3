@@ -169,13 +169,19 @@ For example set `PG_DUMP_ARGS=--format=plain` and
 - `BACKUP_CONFIGURATION_NAMES`: Optional: Configuration names/prefixes for `DATABASE_URL` and
   `S3_DESTINATION`.
 - `BACKUPS_TEMP_DIR`: Optional: Where the temp files should go. Defaults to: `/tmp/db-backups`
+- `THREAD_COUNT`: Optional: The number of threads to use for backup and compression.
+  Defaults to `4`.
 - `PG_DUMP_ARGS`: Optional: Override the default `pg_dump` args:
   `--no-owner --clean --no-privileges --jobs=4 --format=directory --compress=0`.
+  The `--jobs` parameter defaults to `$THREAD_COUNT`.
+- `COMPRESSION_THREAD_COUNT`: Optional: The number of threads to use for compression.
+  Defaults to `$THREAD_COUNT`.
 
 
 ## Will this work outside fly?
 
-Yes, everything that is part of the backup worker (docker image) will work outside Fly.
+Yes, everything that is part of the backup worker (docker image) and creation scripts will work
+outside Fly.
 The script `./trigger-backup.sh` and the GitHub workflow is obviously targeted to fly apps.
 
 

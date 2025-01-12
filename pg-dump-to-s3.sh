@@ -14,9 +14,10 @@ Tar will only be called in case the pg_dump output is a directory.
 "
 
 BACKUPS_TEMP_DIR=${BACKUPS_TEMP_DIR:-/tmp/db-backups}
-COMPRESSION_THREADS=${COMPRESSION_THREADS:-4}
+THREAD_COUNT=${THREAD_COUNT:-4}
+COMPRESSION_THREAD_COUNT=${COMPRESSION_THREAD_COUNT:-$THREAD_COUNT}
 
-default_pg_dump_args="--no-owner --clean --no-privileges --jobs=4 --format=directory --compress=0"
+default_pg_dump_args="--no-owner --clean --no-privileges --jobs=\"${THREAD_COUNT}\" --format=directory --compress=0"
 PG_DUMP_ARGS=${PG_DUMP_ARGS:-$default_pg_dump_args}
 
 database_url=$1
@@ -45,8 +46,8 @@ pg_dump $PG_DUMP_ARGS \
     --file="$raw_backup_path"
 
 if [[ -d "$raw_backup_path" ]]; then
-  echo "Compressing backup to $resulting_backup_path using $COMPRESSION_THREADS threads"
-  tar -cf - -C "$raw_backup_path" . | pigz -p "$COMPRESSION_THREADS" > "$resulting_backup_path"
+  echo "Compressing backup to $resulting_backup_path"
+  tar -cf - -C "$raw_backup_path" . | pigz -p "$COMPRESSION_THREAD_COUNT" > "$resulting_backup_path"
 else
   echo "Skipping compression"
   resulting_backup_path="$raw_backup_path"

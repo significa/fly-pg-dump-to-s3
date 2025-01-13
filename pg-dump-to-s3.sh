@@ -17,7 +17,7 @@ BACKUPS_TEMP_DIR=${BACKUPS_TEMP_DIR:-/tmp/db-backups}
 THREAD_COUNT=${THREAD_COUNT:-4}
 COMPRESSION_THREAD_COUNT=${COMPRESSION_THREAD_COUNT:-$THREAD_COUNT}
 
-default_pg_dump_args="--no-owner --clean --no-privileges --jobs=\"${THREAD_COUNT}\" --format=directory --compress=0"
+default_pg_dump_args="--no-owner --clean --no-privileges --jobs=${THREAD_COUNT} --format=directory --compress=0"
 PG_DUMP_ARGS=${PG_DUMP_ARGS:-$default_pg_dump_args}
 
 database_url=$1

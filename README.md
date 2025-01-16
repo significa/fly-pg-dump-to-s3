@@ -206,7 +206,10 @@ Postgres user setup:
 ```sql
 CREATE USER db_backup_worker WITH PASSWORD '<password>';
 GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
--- For each schema (ex: public):
+-- With Postgres >= 14 use `pg_read_all_data` for simplicity
+GRANT pg_read_all_data TO db_backup_worker;
+
+-- For earlier Postgres versions you must grant these permissions for each schema (ex: public):
 GRANT USAGE ON SCHEMA public TO db_backup_worker;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
 GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
@@ -214,7 +217,6 @@ ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
 GRANT SELECT ON TABLES TO db_backup_worker;
 ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
 GRANT SELECT ON SEQUENCES TO db_backup_worker;
--- Optionally, for PG >= 14 you could use the `pg_read_all_data` role
 ```
 
 Create an AWS S3 bucket and an access token with write permissions to it, attaching the following

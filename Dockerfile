@@ -1,5 +1,5 @@
 # https://hub.docker.com/_/alpine/tags
-ARG IMAGE_TAG=3.18
+ARG IMAGE_TAG=3.21
 
 FROM alpine:$IMAGE_TAG
 

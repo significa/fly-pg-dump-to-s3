@@ -27,7 +27,7 @@ for database_name in "${database_names[@]}"; do
     GRANT pg_read_all_data TO db_backup_worker;
     "
 
-    database_envs+="[ENV]_DATABASE_URL=postgres://${database_backup_worker_user}:${password}@top2.nearest.of.${database_app}.internal:5432/${database_name}\n"
+    database_envs+="[ENV]_DATABASE_URL=postgres://${database_backup_worker_user}:${password}@${database_app}.flycast:5432/${database_name}\n"
 done
 
 database_script+="\q"

@@ -4,7 +4,9 @@ on:
   workflow_call:
     inputs:
       fly-db-name:
-        description: The Fly app name of your db.
+        description: >-
+          The Fly app name of your db.
+          Advanced: you can also use the private network hostname of app/region/machine
         required: true
         type: string
       timeout:

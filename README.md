@@ -20,7 +20,7 @@ This repository contains two backup strategies:
    It leverages Fly machines to dynamically deploy volumes and servers on demand.
    
    Advantages: handles bigger databases, performs backups quickly with performant Fly.io machines
-   (instead of slow github actions), data does directly from Fly to your bucket without going
+   (instead of slow github actions), data goes directly from Fly to your bucket without going
    though GitHub (security, compliance and obviously performance).
 
 ## Why this?
@@ -158,7 +158,7 @@ It will backup all the databases to the desired s3 destination. AWS and fly toke
 Just tweak `PG_DUMP_ARGS` to your liking.
 Tar compression will only kick in if the resulting backup is a directory.
 For example set `PG_DUMP_ARGS=--format=plain` and
-`S3_DESTINATION=s3://sample-db-backups/my_backup.sql`.
+`S3_DESTINATION=s3://sample-db-backups/my_backup.sql` for a raw sql backup.
 
 
 ## Environment variables reference (backup worker)
@@ -206,10 +206,17 @@ Postgres user setup:
 ```sql
 CREATE USER db_backup_worker WITH PASSWORD '<password>';
 GRANT CONNECT ON DATABASE <db_name> TO db_backup_worker;
--- With Postgres >= 14 use `pg_read_all_data` for simplicity
 GRANT pg_read_all_data TO db_backup_worker;
+```
 
--- For earlier Postgres versions you must grant these permissions for each schema (ex: public):
+> **Note**: For Postgres >= 14, `pg_read_all_data` is used for simplicity
+
+
+<details>
+<summary>For older Postgres versions (< 14)</summary>
+
+```sql
+-- Grant these permissions for each schema (ex: public):
 GRANT USAGE ON SCHEMA public TO db_backup_worker;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_backup_worker;
 GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO db_backup_worker;
@@ -218,6 +225,7 @@ GRANT SELECT ON TABLES TO db_backup_worker;
 ALTER DEFAULT PRIVILEGES FOR USER db_backup_worker IN SCHEMA public
 GRANT SELECT ON SEQUENCES TO db_backup_worker;
 ```
+</details>
 
 Create an AWS S3 bucket and an access token with write permissions to it, attaching the following
 IAM policy:

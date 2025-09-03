@@ -20,6 +20,12 @@ on:
         required: false
         default: ${{ github.action_ref }}
         type: string
+      apt_packages:
+        description: >-
+          APT packages to install (Refer to Ubuntu's APT registry).
+          For example: `postgresql-client-17` for pinning the pg_dump to version 17.
+        required: false
+        type: string
 
     secrets:
       FLY_API_TOKEN:
@@ -50,6 +56,12 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - run: pip install awscli
+
+      - name: Install APT packages
+        if: ${{ inputs.apt_packages }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.apt_packages }}
 
       - uses: actions/checkout@v4
         with:

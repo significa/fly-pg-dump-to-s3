@@ -4,7 +4,9 @@ on:
   workflow_call:
     inputs:
       fly-db-name:
-        description: The Fly app name of your db.
+        description: >-
+          The Fly app name of your db.
+          Advanced: you can also use the private network hostname of app/region/machine
         required: true
         type: string
       timeout:
@@ -17,6 +19,12 @@ on:
           `github.action_ref` when it does not behave properly.
         required: false
         default: ${{ github.action_ref }}
+        type: string
+      apt_packages:
+        description: >-
+          APT packages to install (Refer to Ubuntu's APT registry).
+          For example: `postgresql-client-17` for pinning the pg_dump to version 17.
+        required: false
         type: string
 
     secrets:
@@ -48,6 +56,12 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - run: pip install awscli
+
+      - name: Install APT packages
+        if: ${{ inputs.apt_packages }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.apt_packages }}
 
       - uses: actions/checkout@v4
         with:

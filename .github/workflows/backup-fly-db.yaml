@@ -69,8 +69,17 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
       - name: Run backups
-        run: ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
+        shell: bash
+        run: |
+          export PG_DUMP_PATH="docker run --rm --network host \
+            -u $(id -u):$(id -g) \
+            -e BACKUPS_TEMP_DIR=/tmp/db-backups \
+            -v /tmp/db-backups:/tmp/db-backups \
+            postgres:${{ inputs.postgres_version }} pg_dump"
+
+          echo "Using PG_DUMP_PATH=$PG_DUMP_PATH"
+
+          ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
         env:
-          PG_DUMP_PATH: 'docker run --rm --network host -e BACKUPS_TEMP_DIR=/tmp/db-backups -v /tmp/db-backups:/tmp/db-backups -u $(id -u):$(id -g) postgres:${{ inputs.postgres_version }} pg_dump'
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -55,6 +55,7 @@ jobs:
     uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db.yaml
     with:
       fly-db-name: your-fly-db-name
+      postgres_version: '17.6'
     secrets:
       FLY_API_TOKEN: ${{ secrets.DB_BACKUP_FLY_API_TOKEN }}
       DATABASE_URL: ${{ secrets.DB_BACKUP_DATABASE_URL }}

@@ -19,6 +19,7 @@ COMPRESSION_THREAD_COUNT=${COMPRESSION_THREAD_COUNT:-$THREAD_COUNT}
 
 default_pg_dump_args="--no-owner --clean --no-privileges --jobs=${THREAD_COUNT} --format=directory --compress=0"
 PG_DUMP_ARGS=${PG_DUMP_ARGS:-$default_pg_dump_args}
+PG_DUMP_PATH=${PG_DUMP_PATH:-pg_dump}
 
 database_url=$1
 destination=$2
@@ -41,7 +42,7 @@ resulting_backup_path="${BACKUPS_TEMP_DIR}/db_dump.tar.gz"
 rm -rf "$raw_backup_path" "$resulting_backup_path"
 
 echo "Dumping database to $raw_backup_path"
-pg_dump $PG_DUMP_ARGS \
+$PG_DUMP_PATH $PG_DUMP_ARGS \
     --dbname="$database_url" \
     --file="$raw_backup_path"
 

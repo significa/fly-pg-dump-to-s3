@@ -4,10 +4,17 @@ on:
   workflow_call:
     inputs:
       fly-db-name:
-        description: >-
-          The Fly app name of your db.
-          Advanced: you can also use the private network hostname of app/region/machine
+        description: The Fly app name of your db.
         required: true
+        type: string
+      fly-proxy-remote-host-override:
+        description: >-
+          The fly proxy 'remote_host' override.
+          Used to pin the connection directly to a specific machine.
+          For more info refer to https://fly.io/docs/flyctl/proxy/
+          Leave empty to use the default (connect to any available machine)
+        required: false
+        default: ''
         type: string
       timeout:
         description: Backup GitHub action step timeout, in minutes.
@@ -64,7 +71,7 @@ jobs:
           path: ./fly-pg-dump-to-s3
           ref: ${{ inputs.action-ref }}
 
-      - run: flyctl proxy 5432:5432 -a '${{ inputs.fly-db-name }}' &
+      - run: flyctl proxy 5432:5432 -a '${{ inputs.fly-db-name }}' '${{ inputs.fly-proxy-remote-host-override }}' &
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

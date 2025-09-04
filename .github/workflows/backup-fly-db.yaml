@@ -20,11 +20,12 @@ on:
         required: false
         default: ${{ github.action_ref }}
         type: string
-      apt_packages:
+      postgres_version:
         description: >-
-          APT packages to install (Refer to Ubuntu's APT registry).
-          For example: `postgresql-client-17` for pinning the pg_dump to version 17.
+          Postgres docker image tag for pg_dump version.
+          See tags available in https://hub.docker.com/_/postgres
         required: false
+        default: '17'
         type: string
 
     secrets:
@@ -57,12 +58,6 @@ jobs:
 
       - run: pip install awscli
 
-      - name: Install APT packages
-        if: ${{ inputs.apt_packages }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ inputs.apt_packages }}
-
       - uses: actions/checkout@v4
         with:
           repository: significa/fly-pg-dump-to-s3
@@ -76,5 +71,6 @@ jobs:
       - name: Run backups
         run: ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
         env:
+          PG_DUMP_PATH: 'docker run --rm -e BACKUPS_TEMP_DIR=/tmp/db-backups -v /tmp/db-backups:/tmp/db-backups postgres:${{ inputs.postgres_version }} pg_dump'
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

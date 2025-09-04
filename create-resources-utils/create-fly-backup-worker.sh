@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 read -p 'Name prefix (PREFIX-db-backup-worker):' name_prefix
 read -p 'Fly organization name: ' fly_organization_name

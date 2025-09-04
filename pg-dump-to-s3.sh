@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 _USAGE="
 Usage: ./backup-db <database-url> <s3-destination>
@@ -33,6 +33,8 @@ if [[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]]; then
   echo "Required env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
   exit 1
 fi
+
+set -euo pipefail
 
 mkdir -p "$BACKUPS_TEMP_DIR"
 

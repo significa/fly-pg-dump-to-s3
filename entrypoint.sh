@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 BACKUP_CONFIGURATION_NAMES=${BACKUP_CONFIGURATION_NAMES:-}
 

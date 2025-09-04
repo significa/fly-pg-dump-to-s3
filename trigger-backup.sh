@@ -3,7 +3,7 @@
 # Triggers a database backup using fly-pg-dump-to-s3
 # Doc and source: https://github.com/significa/fly-pg-dump-to-s3
 
-set -e
+set -eo pipefail
 
 # Configuration parameters
 FLY_REGION=${FLY_REGION:-cdg}

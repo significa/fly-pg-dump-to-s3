@@ -52,10 +52,10 @@ on:
 jobs:
   backup-db:
     name: Backup db
-    uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db.yaml
+    uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db.yaml@main
     with:
-      fly-db-name: your-fly-db-name
-      postgres_version: '17.6'
+      fly-db-name: significa-pages-db
+      postgres_version: '17.7'
     secrets:
       FLY_API_TOKEN: ${{ secrets.DB_BACKUP_FLY_API_TOKEN }}
       DATABASE_URL: ${{ secrets.DB_BACKUP_DATABASE_URL }}

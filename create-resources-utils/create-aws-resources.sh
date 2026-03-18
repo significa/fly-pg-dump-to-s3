@@ -92,7 +92,8 @@ aws iam put-user-policy \
 echo "Creating ${iam_user_name} access key"
 create_access_key_response=$(
     aws iam create-access-key \
-    --user-name "${iam_user_name}"
+    --user-name "${iam_user_name}" \
+    --output json
 )
 
 aws_access_key_id=$(echo "${create_access_key_response}" | jq -r '.AccessKey.AccessKeyId')

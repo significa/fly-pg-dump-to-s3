@@ -1,0 +1,94 @@
+name: Backup fly DB (OIDC)
+
+on:
+  workflow_call:
+    inputs:
+      fly-db-name:
+        description: >-
+          The Fly app name of your db.
+          There's a hack you can do with this, add a space and the fly proxy 'remote_host'
+          to pin the connection directly to a specific machine.
+          A bit hacky, but probably only used in very specific situation.
+          Example: `my-fly-app fa2a:c:ef16:a7b:4e6:a667:32d9:1`
+          For more info refer to https://fly.io/docs/flyctl/proxy/
+        required: true
+        type: string
+      timeout:
+        description: Backup GitHub action step timeout, in minutes.
+        required: false
+        type: number
+      action-ref:
+        description: >-
+          The `ref` to clone the trigger backup script from. Allows to override GitHub's context
+          `github.action_ref` when it does not behave properly.
+        required: false
+        default: ${{ github.action_ref }}
+        type: string
+      postgres_version:
+        description: >-
+          Postgres docker image tag for pg_dump version.
+          See tags available in https://hub.docker.com/_/postgres
+        required: false
+        default: '17-alpine'
+        type: string
+
+    secrets:
+      FLY_API_TOKEN:
+        required: true
+      DATABASE_URL:
+        description:  >-
+          The URL used to connect and dump the database. Since we are using `flyctl proxy` it is 
+          expected an URL with host localhost and port 5432.
+          Example: `postgresql://username:password@localhost:5432/my-db-name`
+        required: true
+      S3_DESTINATION_URL:
+        description: >-
+          The AWS S3 compatible backup target.
+          Example: `s3://bucket/backup.sql`
+        required: true
+      AWS_ROLE_ARN:
+        description: 'AWS IAM role ARN for assuming deployment permissions'
+        required: true
+
+permissions:
+  id-token: write # Required for OIDC
+
+jobs:
+  backup_db:
+    name: Perform database backups
+    runs-on: ubuntu-latest
+    concurrency: ${{ github.workflow }}-fly-db-backup
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1 # us-east-1 is required for OIDC token exchange
+          disable-retry: true
+
+      - uses: actions/checkout@v6
+        with:
+          repository: significa/fly-pg-dump-to-s3
+          path: ./fly-pg-dump-to-s3
+          ref: ${{ inputs.action-ref }}
+
+      # NOTE: fly-db-name is intentionally not quoted to allow expansion
+      - run: flyctl proxy 5432:5432 -a ${{ inputs.fly-db-name }} &
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Run backups
+        shell: bash
+        run: |
+          export PG_DUMP_PATH="docker run --rm --network host \
+            -u $(id -u):$(id -g) \
+            -e BACKUPS_TEMP_DIR=/tmp/db-backups \
+            -v /tmp/db-backups:/tmp/db-backups \
+            postgres:${{ inputs.postgres_version }} pg_dump"
+
+          echo "Using PG_DUMP_PATH=$PG_DUMP_PATH"
+
+          ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'

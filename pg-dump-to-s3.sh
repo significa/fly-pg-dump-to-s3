@@ -30,9 +30,14 @@ if [[ -z "$database_url" || -z "$destination" ]]; then
 fi
 
 if [[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]]; then
-  echo "Required env vars: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"
-  exit 1
+  echo "INFO: Env vars AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY not provided, relying on AWS CLI configuration or IAM role for authentication"
+  unset AWS_ACCESS_KEY_ID
+  unset AWS_SECRET_ACCESS_KEY
+
+  env
 fi
+
+aws sts get-caller-identity --query 'Account' --output json
 
 set -euo pipefail
 

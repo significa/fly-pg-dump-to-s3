@@ -24,7 +24,7 @@ on:
         required: false
         type: number
       docker-image:
-        description: The image of the backup worker. Usefull to override with specific versions.
+        description: The image of the backup worker. Useful to override with specific versions.
         required: false
         type: string
       error-on-dangling-volumes:
@@ -58,7 +58,7 @@ jobs:
     concurrency: ${{ github.workflow }}-fly-db-backup
     timeout-minutes: ${{ inputs.timeout }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           repository: significa/fly-pg-dump-to-s3
           path: ./fly-pg-dump-to-s3

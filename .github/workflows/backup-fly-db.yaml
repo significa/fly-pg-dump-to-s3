@@ -62,7 +62,7 @@ jobs:
 
       - run: pip install awscli
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: significa/fly-pg-dump-to-s3
           path: ./fly-pg-dump-to-s3

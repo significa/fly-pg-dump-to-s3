@@ -46,10 +46,21 @@ on:
           The AWS S3 compatible backup target.
           Example: `s3://bucket/backup.sql`
         required: true
+      AWS_ROLE_ARN:
+        description: >-
+          The AWS IAM role to assume with OIDC. This is the recommended way to authenticate.
+          Requires `permissions: id-token: write` on the calling workflow.
+          When unset, AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are used instead.
+        required: false
       AWS_ACCESS_KEY_ID:
-        required: true
+        description: 'Deprecated, prefer AWS_ROLE_ARN. Ignored when AWS_ROLE_ARN is set.'
+        required: false
       AWS_SECRET_ACCESS_KEY:
-        required: true
+        description: 'Deprecated, prefer AWS_ROLE_ARN. Ignored when AWS_ROLE_ARN is set.'
+        required: false
+
+permissions:
+  id-token: write # Required for OIDC
 
 jobs:
   backup_db:
@@ -57,10 +68,31 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: ${{ github.workflow }}-fly-db-backup
     timeout-minutes: ${{ inputs.timeout }}
+    env:
+      # The `secrets` context is not available in step `if` conditions, so it goes through env.
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - run: pip install awscli
+      - name: Configure AWS credentials
+        if: env.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1 # us-east-1 is required for OIDC token exchange
+          disable-retry: true
+
+      # Fallback for callers still passing long lived access keys.
+      # NOTE: the credentials are exported here instead of in the `Run backups` step `env`,
+      # because a step level `env` takes precedence over what
+      # `aws-actions/configure-aws-credentials` exports, and empty values would shadow the
+      # OIDC credentials.
+      - name: Configure AWS credentials from access keys
+        if: env.AWS_ROLE_ARN == ''
+        run: |
+          pip install awscli
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> "$GITHUB_ENV"
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v7
         with:
@@ -68,7 +100,7 @@ jobs:
           path: ./fly-pg-dump-to-s3
           ref: ${{ inputs.action-ref }}
 
-      # .fly-db-name is intentionally not quoted to allow expansion
+      # NOTE: fly-db-name is intentionally not quoted to allow expansion
       - run: flyctl proxy 5432:5432 -a ${{ inputs.fly-db-name }} &
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -85,6 +117,3 @@ jobs:
           echo "Using PG_DUMP_PATH=$PG_DUMP_PATH"
 
           ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

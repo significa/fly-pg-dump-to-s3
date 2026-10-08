@@ -86,10 +86,9 @@ jobs:
       # opaque "connection refused" from pg_dump.
       - name: Check the Fly token can reach the app
         shell: bash
-        run: flyctl machines list -a "$FLY_DB_NAME"
+        run: flyctl machines list -a '${{ inputs.fly-db-name }}'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          FLY_DB_NAME: ${{ inputs.fly-db-name }}
 
       - name: Pull the postgres image
         run: docker pull --quiet postgres:${{ inputs.postgres_version }}
@@ -100,10 +99,9 @@ jobs:
           # `remote_host` is optional, it is only passed as an argument when set.
           # Output goes to the step log and to a file, so a later step can show it on failure.
           flyctl proxy 5432:5432 ${FLY_PROXY_REMOTE_HOST:+"$FLY_PROXY_REMOTE_HOST"} \
-            -a "$FLY_DB_NAME" 2>&1 | tee "$PROXY_LOG_FILE" &
+            -a '${{ inputs.fly-db-name }}' 2>&1 | tee "$PROXY_LOG_FILE" &
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-          FLY_DB_NAME: ${{ inputs.fly-db-name }}
           FLY_PROXY_REMOTE_HOST: ${{ inputs.fly-proxy-remote-host }}
 
       - name: Wait for the database to accept connections

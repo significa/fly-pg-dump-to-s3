@@ -1,9 +1,4 @@
-# DISCOURAGED: this workflow authenticates to AWS with long lived access keys.
-# Prefer `backup-fly-db-oidc.yaml`, which assumes an IAM role with OIDC and needs no AWS
-# credentials stored in GitHub. See ../../create-resources-utils for how to set it up.
-# Kept for backwards compatibility with callers that cannot use OIDC.
-
-name: Backup fly DB
+name: Backup fly DB (OIDC)
 
 on:
   workflow_call:
@@ -51,10 +46,12 @@ on:
           The AWS S3 compatible backup target.
           Example: `s3://bucket/backup.sql`
         required: true
-      AWS_ACCESS_KEY_ID:
+      AWS_ROLE_ARN:
+        description: 'AWS IAM role ARN for assuming deployment permissions'
         required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
+
+permissions:
+  id-token: write # Required for OIDC
 
 jobs:
   backup_db:
@@ -65,7 +62,12 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - run: pip install awscli
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1 # us-east-1 is required for OIDC token exchange
+          disable-retry: true
 
       - uses: actions/checkout@v7
         with:
@@ -73,7 +75,7 @@ jobs:
           path: ./fly-pg-dump-to-s3
           ref: ${{ inputs.action-ref }}
 
-      # .fly-db-name is intentionally not quoted to allow expansion
+      # NOTE: fly-db-name is intentionally not quoted to allow expansion
       - run: flyctl proxy 5432:5432 -a ${{ inputs.fly-db-name }} &
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -90,6 +92,3 @@ jobs:
           echo "Using PG_DUMP_PATH=$PG_DUMP_PATH"
 
           ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

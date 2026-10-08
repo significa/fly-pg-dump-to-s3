@@ -63,7 +63,7 @@ permissions:
 jobs:
   backup-db:
     name: Backup db
-    uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db.yaml@main
+    uses: significa/fly-pg-dump-to-s3/.github/workflows/backup-fly-db-oidc.yaml@main
     with:
       fly-db-name: significa-pages-db
       postgres_version: '17.7'
@@ -78,8 +78,9 @@ That's it, trigger the backup at any time with the `workflow_dispatch` event and
 `schedule` to your preference.
 
 `permissions: id-token: write` is required, without it GitHub does not mint the OIDC token
-and the AWS step fails. If you cannot use OIDC, omit `AWS_ROLE_ARN` and pass
-`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` instead, the workflow falls back to them.
+and the AWS step fails. If you cannot use OIDC, there is a discouraged
+`backup-fly-db.yaml` workflow that takes `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+instead, kept only for backwards compatibility.
 
 The IAM role trust policy is pinned to an exact repository and ref; both `workflow_dispatch`
 and `schedule` runs use the repository default branch, so `refs/heads/main` is normally the

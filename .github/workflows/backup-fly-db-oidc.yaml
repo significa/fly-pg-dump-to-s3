@@ -5,13 +5,17 @@ on:
     inputs:
       fly-db-name:
         description: >-
-          The Fly app name of your db.
-          There's a hack you can do with this, add a space and the fly proxy 'remote_host'
-          to pin the connection directly to a specific machine.
-          A bit hacky, but probably only used in very specific situation.
-          Example: `my-fly-app fa2a:c:ef16:a7b:4e6:a667:32d9:1`
-          For more info refer to https://fly.io/docs/flyctl/proxy/
+          The Fly app name of your db. Example: `my-fly-app`.
         required: true
+        type: string
+      fly-proxy-remote-host:
+        description: >-
+          Optional `remote_host` passed to `flyctl proxy`, to pin the connection to a specific
+          machine instead of letting Fly pick one.
+          Example: `fa2a:c:ef16:a7b:4e6:a667:32d9:1`
+          For more info refer to https://fly.io/docs/flyctl/proxy/
+        required: false
+        default: ''
         type: string
       timeout:
         description: Backup GitHub action step timeout, in minutes.
@@ -59,6 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     concurrency: ${{ github.workflow }}-fly-db-backup
     timeout-minutes: ${{ inputs.timeout }}
+    env:
+      PROXY_LOG_FILE: /tmp/flyctl-proxy.log
+      PROXY_READY_TIMEOUT: '20'
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
@@ -75,10 +82,58 @@ jobs:
           path: ./fly-pg-dump-to-s3
           ref: ${{ inputs.action-ref }}
 
-      # NOTE: fly-db-name is intentionally not quoted to allow expansion
-      - run: flyctl proxy 5432:5432 -a ${{ inputs.fly-db-name }} &
+      # Fails early and loudly if the token cannot see the app, instead of later with an
+      # opaque "connection refused" from pg_dump.
+      - name: Check the Fly token can reach the app
+        shell: bash
+        run: flyctl machines list -a "$FLY_DB_NAME"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_DB_NAME: ${{ inputs.fly-db-name }}
+
+      - name: Pull the postgres image
+        run: docker pull --quiet postgres:${{ inputs.postgres_version }}
+
+      - name: Start the Fly proxy
+        shell: bash
+        run: |
+          # `remote_host` is optional, it is only passed as an argument when set.
+          # Output goes to the step log and to a file, so a later step can show it on failure.
+          flyctl proxy 5432:5432 ${FLY_PROXY_REMOTE_HOST:+"$FLY_PROXY_REMOTE_HOST"} \
+            -a "$FLY_DB_NAME" 2>&1 | tee "$PROXY_LOG_FILE" &
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_DB_NAME: ${{ inputs.fly-db-name }}
+          FLY_PROXY_REMOTE_HOST: ${{ inputs.fly-proxy-remote-host }}
+
+      - name: Wait for the database to accept connections
+        shell: bash
+        run: |
+          echo "Waiting up to ${PROXY_READY_TIMEOUT}s for localhost:5432"
+
+          if timeout "$PROXY_READY_TIMEOUT" bash -c '
+            until docker run --rm --network host \
+              postgres:${{ inputs.postgres_version }} \
+              pg_isready --host=localhost --port=5432
+            do
+              sleep 1
+            done
+          '; then
+            echo "The database is accepting connections."
+            exit 0
+          fi
+
+          echo "::error::The database did not accept connections within ${PROXY_READY_TIMEOUT}s."
+
+          echo "--- Last pg_isready attempt"
+          docker run --rm --network host \
+            postgres:${{ inputs.postgres_version }} \
+            pg_isready --host=localhost --port=5432 || true
+
+          echo "--- flyctl proxy output ($PROXY_LOG_FILE)"
+          cat "$PROXY_LOG_FILE" || echo "No proxy log file was written."
+
+          exit 1
 
       - name: Run backups
         shell: bash
@@ -92,3 +147,7 @@ jobs:
           echo "Using PG_DUMP_PATH=$PG_DUMP_PATH"
 
           ./fly-pg-dump-to-s3/pg-dump-to-s3.sh '${{ secrets.DATABASE_URL }}' '${{ secrets.S3_DESTINATION_URL }}'
+
+      - name: Show the Fly proxy output
+        if: failure()
+        run: cat "$PROXY_LOG_FILE" || echo "No proxy log file was written."

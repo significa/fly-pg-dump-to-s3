@@ -8,3 +8,8 @@ kill_timeout = 10
 [[mounts]]
   destination = "/tmp/db-backups"
   source = "temp_data"
+
+# SETUP THIS FOR YOUR ROLE
+# [env]
+#   AWS_ROLE_ARN = "arn:aws:iam::<account-id>:role/<role-name>"
+#   AWS_REGION = "eu-central-1"

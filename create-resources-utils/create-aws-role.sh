@@ -1,23 +1,113 @@
 #!/bin/bash
 
-set -eo pipefail
+# Creates the IAM role that GitHub Actions or a Fly machine assumes via OIDC to push backups
+# to the bucket. No access keys involved.
+#
+# Requires the matching identity provider to exist (see `setup-aws-oidc-provider.sh`).
+#
+# Usage: ./create-aws-role.sh <fly|github> [bucket-name]
 
-if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <region> <bucket-name>"
+set -euo pipefail
+
+export AWS_PAGER=""
+
+provider_type="${1:-}"
+bucket_name="${2:-}"
+
+if [[ -z "$provider_type" ]]; then
+    echo "Usage: $0 <fly|github> [bucket-name]"
     exit 1
 fi
 
-region="$1"
-bucket_name="$2"
+if [[ "$provider_type" != "fly" && "$provider_type" != "github" ]]; then
+    echo "Error: provider type must be 'fly' or 'github'"
+    exit 1
+fi
+
+if [[ -z "$bucket_name" ]]; then
+    read -r -p 'Backups bucket name (ex: sample-db-backups): ' bucket_name
+fi
 
 read -r -p 'Role name (example: sample-db-backup-role): ' role_name
 
-read -r -p 'GitHub subject (ex: repo:org/repo:ref:refs/heads/main): ' github_subject
+aws_account_id=$(aws sts get-caller-identity --query 'Account' --output text)
 
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
-PROVIDER_ARN="arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
+case "$provider_type" in
+    github)
+        provider_host="token.actions.githubusercontent.com"
+        provider_arn="arn:aws:iam::${aws_account_id}:oidc-provider/${provider_host}"
 
-echo "Creating role ${role_name} in region ${region} for bucket ${bucket_name}"
+        subject_condition="StringEquals"
+
+        cat <<'HELP'
+
+Subject (`sub`): which GitHub Actions runs may assume this role.
+Matched exactly, no wildcards.
+Format: repo:<org>/<repo>:ref:refs/heads/<branch>
+
+  repo:significa/sample:ref:refs/heads/main
+  repo:significa/sample@XXXXXX:ref:refs/heads/main   (repos with a name suffix, paste as is)
+
+`workflow_dispatch` and `schedule` runs use the repository default branch, so
+`refs/heads/main` is what you want unless the workflow lives elsewhere.
+To allow more than one ref, edit the role trust policy afterwards and swap the
+StringEquals condition for StringLike.
+
+HELP
+        ;;
+    fly)
+        read -r -p 'Fly.io organization name (slug): ' fly_org
+
+        provider_host="oidc.fly.io/${fly_org}"
+        provider_arn="arn:aws:iam::${aws_account_id}:oidc-provider/${provider_host}"
+        subject_condition="StringLike"
+
+        cat <<HELP
+
+Subject (\`sub\`): which Fly machines may assume this role.
+Format: <org-slug>:<app-name>:<machine-id>
+
+  ${fly_org}:sample-db-backup-worker:*   (any machine of the backup worker app, recommended)
+  ${fly_org}:sample-db-backup-worker:148e2d1bc23198
+
+Machine ids change on every deploy, so keep the trailing \`*\`.
+Matched with StringLike, wildcards are allowed.
+
+HELP
+        ;;
+esac
+
+read -r -p 'Subject: ' oidc_subject
+
+if [[ -z "$oidc_subject" ]]; then
+    echo "Error: subject cannot be empty"
+    exit 1
+fi
+
+if ! aws iam get-open-id-connect-provider --open-id-connect-provider-arn "${provider_arn}" &>/dev/null; then
+    echo "Error: identity provider ${provider_arn} not found in this account."
+    echo "Run ./setup-aws-oidc-provider.sh ${provider_type} first."
+    exit 1
+fi
+
+if [[ "$subject_condition" == "StringEquals" ]]; then
+    # Both conditions share the same operator, they must live in the same JSON object.
+    condition_block="{
+                \"StringEquals\": {
+                    \"${provider_host}:aud\": \"sts.amazonaws.com\",
+                    \"${provider_host}:sub\": \"${oidc_subject}\"
+                }
+            }"
+else
+    condition_block="{
+                \"StringEquals\": {
+                    \"${provider_host}:aud\": \"sts.amazonaws.com\"
+                },
+                \"${subject_condition}\": {
+                    \"${provider_host}:sub\": \"${oidc_subject}\"
+                }
+            }"
+fi
 
 assume_role_policy="{
     \"Version\": \"2012-10-17\",
@@ -25,20 +115,16 @@ assume_role_policy="{
         {
             \"Effect\": \"Allow\",
             \"Principal\": {
-                \"Federated\": \"${PROVIDER_ARN}\"
+                \"Federated\": \"${provider_arn}\"
             },
             \"Action\": \"sts:AssumeRoleWithWebIdentity\",
-            \"Condition\": {
-                \"StringEquals\": {
-                    \"token.actions.githubusercontent.com:aud\": \"sts.amazonaws.com\"
-                },
-                \"StringLike\": {
-                    \"token.actions.githubusercontent.com:sub\": \"${github_subject}\"
-                }
-            }
+            \"Condition\": ${condition_block}
         }
     ]
 }"
+
+echo "Trust policy:"
+echo "${assume_role_policy}" | jq .
 
 echo "Creating role ${role_name}"
 aws iam create-role \
@@ -70,6 +156,5 @@ aws iam put-role-policy \
 
 role_arn=$(aws iam get-role --role-name "${role_name}" --query 'Role.Arn' --output text)
 
-echo -e "\nDone. Role created:"
-echo "Role Name: ${role_name}"
-echo "Role ARN: ${role_arn}"
+echo -e "\nDone. Save the following:\n"
+echo "AWS_ROLE_ARN=${role_arn}"

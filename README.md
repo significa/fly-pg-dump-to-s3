@@ -23,6 +23,10 @@ This repository contains two backup strategies:
    (instead of slow github actions), data goes directly from Fly to your bucket without going
    though GitHub (security, compliance and obviously performance).
 
+Both authenticate to AWS with OIDC, there are no AWS access keys in either setup. The only
+difference is who AWS trusts: the GitHub Actions identity provider in Method 1, and your Fly
+organization's identity provider in Method 2.
+
 ## Why this?
 
 Indeed Fly's pg images support `wal-g` config to S3 via env vars.
@@ -38,6 +42,10 @@ Create your resources, credentials and permissions following the
 
 ### Method 1: Simple github actions backup
 
+GitHub Actions proxies into your Fly database, runs `pg_dump`, and pushes the archive to S3.
+AWS credentials are obtained at runtime with OIDC, so the only long lived secret is the Fly
+deploy token.
+
 Create a `.github/workflows/backup-database.yaml` in your project:
 
 ```yaml
@@ -48,6 +56,9 @@ on:
   schedule:
     # Every day at 6:22am UTC
     - cron: "22 6 * * *"
+
+permissions:
+  id-token: write # Required for OIDC
 
 jobs:
   backup-db:
@@ -60,28 +71,43 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.DB_BACKUP_FLY_API_TOKEN }}
       DATABASE_URL: ${{ secrets.DB_BACKUP_DATABASE_URL }}
       S3_DESTINATION_URL: ${{ secrets.DB_BACKUP_S3_DESTINATION_URL }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.DB_BACKUP_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.DB_BACKUP_AWS_SECRET_ACCESS_KEY }}
+      AWS_ROLE_ARN: ${{ secrets.DB_BACKUP_AWS_ROLE_ARN }}
 ```
 
-That's it, trigger the backup at any time with the `workflow_dispatch` event and adapt the 
+That's it, trigger the backup at any time with the `workflow_dispatch` event and adapt the
 `schedule` to your preference.
+
+`permissions: id-token: write` is required, without it GitHub does not mint the OIDC token
+and the AWS step fails. If you cannot use OIDC, omit `AWS_ROLE_ARN` and pass
+`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` instead, the workflow falls back to them.
+
+The IAM role trust policy is pinned to an exact repository and ref; both `workflow_dispatch`
+and `schedule` runs use the repository default branch, so `refs/heads/main` is normally the
+right subject.
 
 ### Method 2: Worker installation
 
-1. Launch your database backup worker with `fly apps create`
+1. Launch your database backup worker with `./create-resources-utils/create-fly-backup-worker.sh`
+   (or `fly apps create`).
 
-2. Set the required fly secrets (env vars). Example:
+2. Set the required fly env vars. Setting `AWS_ROLE_ARN` is enough for the worker to assume
+   the role: Fly's init handles the OIDC token for you, there are no AWS access keys.
+   `AWS_ROLE_ARN` and `AWS_REGION` can live in `[env]` in your `fly.toml`, the database URL
+   should be a secret. Example:
 
    ```env
-   AWS_ACCESS_KEY_ID=XXXX
-   AWS_SECRET_ACCESS_KEY=XXXX
+   AWS_ROLE_ARN=arn:aws:iam::123456789012:role/sample-db-backup-role
+   AWS_REGION=eu-central-1
    DATABASE_URL=postgresql://username:password@my-fly-db-instance.internal:5432/my_database
    S3_DESTINATION=s3://your-s3-bucket/backup.tar.gz
    ```
 
-3. Automate the Call the reusable GitHub Actions workflow found in
-   `.github/workflows/trigger-backup.yaml`. Example workflow definition:
+   The role must trust the `oidc.fly.io/<org-slug>` provider with a subject matching this app,
+   for example `my-org:my-db-backup-worker:*`. See the
+   [create resources utils documentation](./create-resources-utils).
+
+3. Call the reusable GitHub Actions workflow found in `.github/workflows/trigger-backup.yaml`.
+   Example workflow definition:
 
    ```yaml
    name: Backup databases
@@ -103,7 +129,7 @@ That's it, trigger the backup at any time with the `workflow_dispatch` event and
        secrets:
          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
    ```
-   
+
 You can also trigger a manual backup without GitHub actions with `./trigger-backup.sh`:
 
    - `FLY_APP`: (Required) Your fly application.
@@ -164,6 +190,11 @@ For example set `PG_DUMP_ARGS=--format=plain` and
 
 ## Environment variables reference (backup worker)
 
+- `AWS_ROLE_ARN`: The IAM role the worker assumes. On Fly this is all that is needed:
+  the Machine's init writes an OIDC token to `/.fly/oidc_token` (refreshed every 9 minutes)
+  and sets `AWS_WEB_IDENTITY_TOKEN_FILE` and `AWS_ROLE_SESSION_NAME`, which the AWS CLI picks
+  up on its own. When unset, the AWS CLI falls back to its usual credential sources.
+- `AWS_REGION`: The AWS region.
 - `DATABASE_URL`: Postgres database URL.
   For example: `postgresql://username:password@test:5432/my_database`
 - `S3_DESTINATION`: AWS S3 fill file destination Postgres database URL.
@@ -184,6 +215,10 @@ For example set `PG_DUMP_ARGS=--format=plain` and
 Yes, everything that is part of the backup worker (docker image) and creation scripts will work
 outside Fly.
 The script `./trigger-backup.sh` and the GitHub workflow is obviously targeted to fly apps.
+
+Outside Fly nothing populates the OIDC token file, so leave `AWS_ROLE_ARN` unset and let the
+AWS CLI pick up credentials from its usual sources (instance profile, `~/.aws/credentials`,
+env vars, etc).
 
 
 ## Migrating to v3 (Fly machines - apps v2)
@@ -228,8 +263,8 @@ GRANT SELECT ON SEQUENCES TO db_backup_worker;
 ```
 </details>
 
-Create an AWS S3 bucket and an access token with write permissions to it, attaching the following
-IAM policy:
+Create an AWS S3 bucket and an IAM role with write permissions to it, attaching the following
+permissions policy:
 
 ```json
 {
@@ -248,3 +283,56 @@ IAM policy:
   ]
 }
 ```
+
+And the following trust policy, so the role can be assumed via OIDC.
+For GitHub Actions (Method 1):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:<org>/<repo>:ref:refs/heads/main"
+        }
+      }
+    }
+  ]
+}
+```
+
+For a Fly backup worker (Method 2):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<account-id>:oidc-provider/oidc.fly.io/<org-slug>"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.fly.io/<org-slug>:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "oidc.fly.io/<org-slug>:sub": "<org-slug>:<backup-worker-app>:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+Both require the matching OIDC identity provider to exist in the account
+(`https://token.actions.githubusercontent.com` or `https://oidc.fly.io/<org-slug>`, audience
+`sts.amazonaws.com`).
